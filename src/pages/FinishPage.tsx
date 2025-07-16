@@ -20,19 +20,25 @@ export const FinishPage: React.FC = () => {
 
   const nextSteps = [
     {
-      title: "בדיקת זכאות",
-      description: "צוות המומחים שלנו יבדוק את המסמכים תוך 1-2 ימי עסקים",
+      title: "הגשת ייצוג לרשויות",
+      description: "נגיש ייצוג מטעמך לרשויות המס הרלוונטיות",
       status: "pending",
       timeframe: "1-2 ימי עסקים"
     },
     {
-      title: "הגשת בקשה לרשויות",
+      title: "בדיקת זכאות",
+      description: "צוות המומחים שלנו יבדוק את המסמכים ויקבע זכאות",
+      status: "pending",
+      timeframe: "2-3 שבועות"
+    },
+    {
+      title: "הגשת בקשה",
       description: "במידה ואתה זכאי, נגיש בקשה להחזר מס בשמך",
       status: "pending",
       timeframe: "3-5 ימי עסקים"
     },
     {
-      title: "קבלת החזר המס",
+      title: "קבלת החזר",
       description: "הכסף יועבר ישירות לחשבון הבנק שלך",
       status: "pending",
       timeframe: "2-8 שבועות"

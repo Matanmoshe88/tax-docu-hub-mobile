@@ -199,10 +199,31 @@ export const DocumentsPage: React.FC = () => {
           {documents.map((doc) => (
             <Card 
               key={doc.id} 
-              className={`shadow-card hover:shadow-lg transition-all ${
-                doc.uploaded ? 'ring-2 ring-success/20 bg-success/5' : ''
+              className={`shadow-card hover:shadow-lg transition-all relative ${
+                doc.uploaded && doc.locked ? 'ring-2 ring-success/20 bg-success/5' : ''
               }`}
             >
+              {doc.uploaded && doc.locked && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg z-10 flex items-center justify-center">
+                  <div className="text-center space-y-2">
+                    <div className="flex justify-center">
+                      <Lock className="h-8 w-8 text-success" />
+                    </div>
+                    <h3 className="font-semibold text-lg">{doc.title}</h3>
+                    <p className="text-sm text-muted-foreground">הקובץ הועלה בהצלחה</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => unlockDocument(doc.id)}
+                      className="mt-2"
+                    >
+                      <Unlock className="h-4 w-4 mr-2" />
+                      ערוך שוב
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 rounded-lg bg-primary/10 text-primary">
@@ -214,9 +235,6 @@ export const DocumentsPage: React.FC = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-lg">{doc.title}</h3>
-                          {doc.uploaded && (
-                            <Lock className="h-4 w-4 text-success" />
-                          )}
                         </div>
                         <p className="text-muted-foreground text-sm mt-1">{doc.description}</p>
                         <div className="text-xs text-muted-foreground mt-2">
@@ -225,32 +243,13 @@ export const DocumentsPage: React.FC = () => {
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        {doc.uploaded ? (
-                          <div className="flex items-center gap-2">
-                            <Badge variant="success" className="text-xs">הועלה</Badge>
-                            {doc.locked ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => unlockDocument(doc.id)}
-                              >
-                                <Unlock className="h-4 w-4" />
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => removeDocument(doc.id)}
-                              >
-                                <Upload className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        ) : null}
+                        {doc.uploaded && !doc.locked && (
+                          <Badge variant="success" className="text-xs">הועלה</Badge>
+                        )}
                       </div>
                     </div>
 
-                    {!doc.uploaded && (
+                    {(!doc.uploaded || !doc.locked) && (
                       <div>
                         <input
                           type="file"
@@ -265,16 +264,8 @@ export const DocumentsPage: React.FC = () => {
                           onClick={() => document.getElementById(`file-${doc.id}`)?.click()}
                         >
                           <Upload className="h-4 w-4 mr-2" />
-                          העלה קובץ
+                          {doc.uploaded ? 'החלף קובץ' : 'העלה קובץ'}
                         </Button>
-                      </div>
-                    )}
-
-                    {doc.uploaded && doc.file && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Eye className="h-4 w-4" />
-                        <span>{doc.file.name}</span>
-                        <span>({(doc.file.size / 1024 / 1024).toFixed(1)} MB)</span>
                       </div>
                     )}
                   </div>
