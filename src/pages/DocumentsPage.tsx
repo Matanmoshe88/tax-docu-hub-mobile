@@ -167,13 +167,8 @@ export const DocumentsPage: React.FC = () => {
   };
 
   const handlePrevious = () => {
-    // Check if signature was saved - if so, go to promissory note, not signature
-    const signatureSaved = localStorage.getItem(`signature_saved_${leadId}`);
-    if (signatureSaved) {
-      navigate(`/promissory/${leadId}`);
-    } else {
-      navigate(`/signature/${leadId}`);
-    }
+    // Don't allow going back - document is already signed
+    return;
   };
 
   return (
@@ -181,9 +176,9 @@ export const DocumentsPage: React.FC = () => {
       currentStep={3}
       totalSteps={4}
       onNext={handleNext}
-      onPrevious={handlePrevious}
+      onPrevious={undefined}
       nextLabel="סיום העלאת מסמכים"
-      previousLabel="חזור לחתימה"
+      previousLabel={undefined}
       isNextDisabled={!canFinish}
     >
       <div className="space-y-6 animate-fade-in">

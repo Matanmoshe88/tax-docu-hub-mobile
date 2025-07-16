@@ -203,9 +203,9 @@ export const SignaturePage: React.FC = () => {
               <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg bg-muted/10 p-4">
                 <canvas
                   ref={canvasRef}
-                  width={600}
-                  height={200}
-                  className="w-full h-48 cursor-crosshair border border-border rounded bg-white touch-none"
+                  width={800}
+                  height={300}
+                  className="w-full h-72 cursor-crosshair border border-border rounded bg-white touch-none"
                   onMouseDown={startDrawing}
                   onMouseMove={draw}
                   onMouseUp={stopDrawing}
