@@ -34,7 +34,7 @@ export const ContractPage: React.FC = () => {
   }, [leadId]);
 
   const handleNext = () => {
-    navigate(`/promissory/${leadId}`);
+    navigate(`/signature/${leadId}`);
   };
 
   const handlePrevious = () => {
@@ -160,25 +160,13 @@ export const ContractPage: React.FC = () => {
 
 פרטי עושה השטר:
 
-שם מלא: _________________________________
-
-מספר תעודת זהות: ________________________
+שם מלא: ________________________     מספר תעודת זהות: ______________________
 
 כתובת: ___________________________________
 
         ___________________________________
 
-חתימת עושה השטר: _________________________
-
-תאריך: ___________________________________`}
-            </div>
-            
-            {/* Signature Line */}
-            <div className="mt-8 pt-6 border-t-2 border-primary/20">
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground mb-2">חתימת עושה השטר</div>
-                <div className="border-b-2 border-muted-foreground w-60 mx-auto"></div>
-              </div>
+חתימת עושה השטר: _________________________`}
             </div>
           </div>
         </div>
