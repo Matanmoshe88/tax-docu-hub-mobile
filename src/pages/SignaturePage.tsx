@@ -93,16 +93,37 @@ export const SignaturePage: React.FC = () => {
       return;
     }
 
+    // Check signature size
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        let pixelCount = 0;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] > 0) pixelCount++;
+        }
+        
+        if (pixelCount < 100) {
+          toast({
+            title: "החתימה קטנה מדי",
+            description: "אנא חתום שוב בצורה ברורה יותר",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+    }
+
     setIsSubmitting(true);
     
     try {
-      // TODO: Save signature to Salesforce
-      const canvas = canvasRef.current;
       if (canvas) {
         const signatureDataURL = canvas.toDataURL();
         console.log('Signature data:', signatureDataURL);
         
-        // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1500));
         
         setIsSigned(true);
