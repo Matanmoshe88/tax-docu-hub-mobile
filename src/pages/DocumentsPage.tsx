@@ -36,7 +36,7 @@ export const DocumentsPage: React.FC = () => {
     {
       id: 'id-card',
       title: 'תעודת זהות',
-      description: 'צילום ברור של תעודת הזהות (שני צדדים)',
+      description: 'צילום ברור של תעודת הזהות',
       icon: CreditCard,
       required: true,
       uploaded: false,
