@@ -167,7 +167,13 @@ export const DocumentsPage: React.FC = () => {
   };
 
   const handlePrevious = () => {
-    navigate(`/signature/${leadId}`);
+    // Check if signature was saved - if so, go to promissory note, not signature
+    const signatureSaved = localStorage.getItem(`signature_saved_${leadId}`);
+    if (signatureSaved) {
+      navigate(`/promissory/${leadId}`);
+    } else {
+      navigate(`/signature/${leadId}`);
+    }
   };
 
   return (

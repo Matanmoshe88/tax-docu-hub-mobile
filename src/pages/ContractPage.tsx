@@ -34,7 +34,7 @@ export const ContractPage: React.FC = () => {
   }, [leadId]);
 
   const handleNext = () => {
-    navigate(`/signature/${leadId}`);
+    navigate(`/promissory/${leadId}`);
   };
 
   const handlePrevious = () => {
@@ -126,9 +126,9 @@ export const ContractPage: React.FC = () => {
 
 
         {/* Contract Content - Full Width */}
-        <div className="w-full -mx-4 sm:-mx-6">
-          <div className="px-2 sm:px-4">
-            <div className="text-xs sm:text-sm leading-6 sm:leading-7 whitespace-pre-wrap font-hebrew text-right bg-background p-3 sm:p-6 w-full">
+        <div className="w-screen -mx-4 sm:-mx-6 lg:-mx-8 xl:-mx-12">
+          <div className="px-4 sm:px-6 lg:px-8 xl:px-12 py-6 bg-background">
+            <div className="text-xs sm:text-sm leading-6 sm:leading-7 whitespace-pre-wrap font-hebrew text-right max-w-none">
               {contractText}
             </div>
           </div>
