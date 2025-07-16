@@ -87,16 +87,14 @@ export const HomePage: React.FC = () => {
           </p>
         </div>
 
-        {/* Contract Content */}
-        <Card className="shadow-card">
-          <CardContent className="p-8">
-            <div className="prose prose-sm max-w-none text-right leading-relaxed">
-              <pre className="text-sm leading-7 whitespace-pre-wrap font-hebrew text-right bg-muted/20 p-6 rounded-lg border">
-                {contractText}
-              </pre>
+        {/* Contract Content - Full Width */}
+        <div className="w-screen -mx-4 sm:-mx-6 lg:-mx-8 xl:-mx-12">
+          <div className="px-4 sm:px-6 lg:px-8 xl:px-12 py-6 bg-background">
+            <div className="text-xs sm:text-sm leading-6 sm:leading-7 whitespace-pre-wrap font-hebrew text-right max-w-none">
+              {contractText}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Important Notice */}
         <Card className="border-warning shadow-card">
