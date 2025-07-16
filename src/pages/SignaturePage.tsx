@@ -105,6 +105,7 @@ export const SignaturePage: React.FC = () => {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1500));
         
+        setIsSigned(true);
         toast({
           title: "החתימה נשמרה בהצלחה",
           description: "המעבר לשלב הבא - העלאת מסמכים",
@@ -123,7 +124,13 @@ export const SignaturePage: React.FC = () => {
     }
   };
 
+  const [isSigned, setIsSigned] = useState(false);
+
   const handlePrevious = () => {
+    if (isSigned) {
+      // Don't allow going back after signing
+      return;
+    }
     navigate(`/contract/${leadId}`);
   };
 
@@ -132,9 +139,9 @@ export const SignaturePage: React.FC = () => {
       currentStep={2}
       totalSteps={4}
       onNext={handleNext}
-      onPrevious={handlePrevious}
+      onPrevious={!isSigned ? handlePrevious : undefined}
       nextLabel={isSubmitting ? "שומר..." : "שמור וגשת המשך"}
-      previousLabel="חזור להסכם"
+      previousLabel={!isSigned ? "חזור להסכם" : undefined}
       isNextDisabled={isSubmitting}
     >
       <div className="space-y-6 animate-fade-in">

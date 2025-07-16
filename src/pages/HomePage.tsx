@@ -1,221 +1,120 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { PortalLayout } from '@/components/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { 
-  FileText, 
-  PenTool, 
-  Upload, 
-  CheckCircle,
-  Phone,
-  Mail,
-  MapPin,
-  ArrowLeft
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { FileText } from 'lucide-react';
+
+interface ClientData {
+  firstName: string;
+  lastName: string;
+  idNumber: string;
+  phone: string;
+  email: string;
+  address: string;
+  commissionRate: string;
+}
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [leadId, setLeadId] = useState('');
+  const { leadId } = useParams();
+  const [clientData, setClientData] = useState<ClientData>({
+    firstName: "יוסי",
+    lastName: "כהן", 
+    idNumber: "123456789",
+    phone: "050-1234567",
+    email: "yossi.cohen@email.com",
+    address: "רחוב הרצל 1, תל אביב",
+    commissionRate: "25%"
+  });
 
-  const handleStartProcess = () => {
-    if (!leadId.trim()) {
-      toast({
-        title: "נדרש מספר לקוח",
-        description: "אנא הזן את מספר הלקוח שלך",
-        variant: "destructive",
-      });
-      return;
-    }
+  useEffect(() => {
+    // TODO: Fetch client data from Salesforce based on leadId
+    console.log('Loading client data for lead:', leadId);
+  }, [leadId]);
 
-    navigate(`/contract/${leadId.trim()}`);
+  const handleNext = () => {
+    navigate(`/signature/${leadId || 'demo'}`);
   };
 
-  const processSteps = [
-    {
-      icon: FileText,
-      title: "קריאת החוזה",
-      description: "קרא את תנאי ההסכם והבן את זכויותיך"
-    },
-    {
-      icon: PenTool,
-      title: "חתימה דיגיטלית",
-      description: "חתום על ההסכם באופן דיגיטלי ובטוח"
-    },
-    {
-      icon: Upload,
-      title: "העלאת מסמכים",
-      description: "העלה את המסמכים הנדרשים למערכת"
-    },
-    {
-      icon: CheckCircle,
-      title: "סיום התהליך",
-      description: "קבל אישור והמתן לבדיקת הזכאות"
-    }
-  ];
+  const contractText = `בין : קוויק טקס (שם רשום: "ג'י.אי.אמ גלובל")   ח"פ: 513218453      (להלן: "קוויקטקס" ו/או "החברה")
+לבין:    ${clientData.firstName} ${clientData.lastName}                                                   ת"ז: ${clientData.idNumber}                                    (להלן: "הלקוח")
+שנחתם בתאריך : ${new Date().toLocaleDateString('he-IL')}
 
-  const companyInfo = {
-    name: "קוויק טקס",
-    legalName: "ג'י.אי.אמ גלובל ניהול והשקעות בע\"מ",
-    registration: "ח.פ. 513218453",
-    address: "ת.ד. 11067, פתח-תקווה מיקוד 4934829",
-    phone: "03-1234567",
-    email: "office@quicktaxs.com"
-  };
+הואיל והלקוח מאשר בזאת כי הינו מבקש לבדוק את זכאותו להחזרי מס באמצעות ג'י.אי.אמ גלובל ניהול והשקעות בע"מ ח.פ. 513218453 להלן: ("קוויקטקס" ו/או "החברה") שכתובתה ת.ד. 11067, פתח-תקווה מיקוד 4934829 מול כלל הרשויות לרבות מס הכנסה וביטוח לאומי לצורך ייצוגו וטיפולו בקבלת ההחזר ממס הכנסה (להלן: "החזר המס") לשנים 2023-2018 (להלן: "תקופת המס") ולבצע עבורו את הפעולות הנדרשות על מנת לקבל החזר מס במקרה של זכאות;
+
+והואיל והחברה - המעסיקה רו"ח ויועצי מס ועוסקת במתן שירותים אל מול רשויות המס לשם ביצוע החזרי מס לשכירים והגשת דוחות כספיים- מסכימה ליטול על עצמה את ייצוגו של הלקוח בהליך החזר המס;
+
+לפיכך, הוצהר, הוסכם והותנה בין הצדדים כדלקמן:
+
+1. החברה מספקת שירות לטיפול בהחזרי מס לשכירים מרשויות המס השונות, תוך ליווי הלקוח והגשת בקשות להחזר מיסים בשמו. תנאי סף לבדיקת הזכאות הוא שהלקוח היה שכיר ושילם מס הכנסה בשש השנים האחרונות, והלקוח מצהיר כי עומד בתנאי הסף כאמור לעיל. הטיפול של החברה כולל הזמנת המסמכים הרלוונטיים מרשויות המס בשם הלקוח, בחינתם על ידי אנשי מקצוע (רואי חשבון ו/או יועצי מס) ובמידה ונתוני הלקוח עונים על התנאים להחזר, תוגש בשמו של הלקוח בקשה להחזר מס (להלן: "השירות").
+
+2. השירות הניתן הוא לטיפול בהחזר מס בלבד (לצורך הסכם זה, המונח "החזר מס" יהיה הסכום שייקבע על פי שומת מס הכנסה לתקופה הרלוונטית, לפני כל קיזוז ו/או עיקול בגין חוב המגיע ממנו לצד ג') ואינו כולל כל עניין ו/או טיפול אחרים מלבד כמפורט במפורש לעיל ולהלן. כל שירות שאינו חלק מתהליך קבלת החזרי המס כגון תיאום מס, סגירת תיקים פתוחים במס הכנסה וכד' יהיה כרוך בתשלום נוסף על פי תעריפי החברה ובהתאם לשיקול דעתה הבלעדי של החברה.
+
+3. הלקוח מאשר בזאת לחברה לטפל עבורו בהחזרי המס לשנים 2026-2017 (להלן: "תקופת המס") ולשם כך לבצע עבור הלקוח את הפעולות הנדרשות על מנת לקבל החזרי מס ולטפל בכל הנוגע בדבר, לרבות בדיקת זכאותו להחזרי מס ומייפה את כוחה של החברה ו/או רואה חשבון מטעמה ו/או מי מטעמה לפנות בשמו ובמקומו לרשויות המס או לגופים הרלוונטיים אחרים, לרבות מס הכנסה וביטוח לאומי, וזאת על מנת לבקש, לאסוף או להגיש את המסמכים הדרושים או על מנת שיוכל לפעול בכל דרך אחרת הנדרשת לבדיקת זכאות הלקוח להחזרי מס לטובת טיפול בקבלת החזר, וזאת ללא צורך בעדכון הלקוח או קבלת אישור הלקוח לגבי כל השנים המצוינות בתקופת המס.
+
+4. כמו כן, ידוע ללקוח כי לצורך טיפול יעיל ומהיר הוא יידרש לחתום על מסמכים לרבות בקשה לרישום ייצוג ו/או מתן ייפוי הכוח המאפשר לחברה ו/או מי מטעמה להציג ולהגיש כל מסמך ומידע השייך ללקוח לביטוח לאומי ו/או לרשויות המס, המצ"ב להסכם זה (ראה מצ"ב יפוי כח כנספח א'), לטובת ביצוע בדיקת הזכאות וטיפול בהחזר המס, והלקוח מאשר לחברה ו/או מי מטעמה לקבל עבורו את כל הנתונים והמסמכים הרלוונטיים הנדרשים לצורך הטיפול בהחזר המס, ומתחייב לשתף פעולה להשגת כלל המסמכים והנתונים הנדרשים לצורך בדיקת זכאות הלקוח להחזר מס והגשת הדו"ח.
+
+5. אין בבדיקותיה ושירותיה של החברה להבטיח החזרת מס בפועל. כמו כן, לחברה לא תהיה כל אחריות כלפי הלקוח, במישרין ו/או בעקיפין, בכל תוצאת הבדיקה ו/או החלטה ו/או נימוק ו/או כל דרישה שהיא, בעבר, הווה ובעתיד, של רשויות המס והמוסד לביטוח לאומי מהלקוח, לרבות חבות מס ו/או שינויים בתקנות ובנהלים של רשויות המס שיש בהם כדי להשפיע על אי קבלת ההחזר, סכום ההחזר ו/או מועד קבלתו ו/או במקרה של דחיית הבקשה, באופן מלא או חלקי, או גובה ההחזר, מכל סיבה שהיא. למען הסר ספק, החברה לא מתחייבת כי הלקוח יקבל החזר מס בפועל וללקוח לא תהא כל טענה ו/או דרישה ו/או תביעה נגד החברה בקשר להחלטת הרשויות.
+
+6. הלקוח מצהיר ומתחייב שלא לטפל בהחזרי המס בתקופת המס שבטיפול בכל דרך אחרת, לרבות בדו"ח פרטי, כמו כן מתחייב הלקוח להעביר לחברה כל מסמך ו/או אסמכתא ו/או מידע הנחוצים לטובת הייצוג ללא דיחוי. הלקוח מתחייב לאשר את הייצוג באזור האישי במס הכנסה ולשתף פעולה. הלקוח מתחייב לפעול בשקיפות מלאה עם החברה ולהעביר מידע נכון ומלא לרבות לעניין הדיווחים לרשויות המס או לגורמים אחרים ולרבות כלל הנתונים הרלוונטיים אודותיו ואודות משפחתו באופן מלא, אמיתי ומדויק ומצהיר כי ידוע לו שהחברה מתקשרת אתו על בסיס הנתונים כאמור. הלקוח מצהיר כי מסר לחברה את כל המסמכים, הנתונים והפרטים שהיו בידיו ובידיעתו כי פרט להכנסות עליהן דיווח, לא היו לו או לבת/בן זוגו/ה הכנסות נוספות בארץ או ובחו"ל, מכל מקור שהוא, בין אם ממשלח יד ובין אם ממקור אחר.
+
+7. הלקוח מצהיר ומודע לכך כי אי שיתוף פעולה מצד הלקוח ואי מסירת המידע או מסירת מידע שאינו נכון ו/או עדכני ו/או מלא עלול לעכב את מתן השירות או לגרום לסירוב הבקשה וללקוח לא יהיה בגין עיכוב ו/או סירוב כאמור כל טענה ו/או דרישה ו/או תביעה כנגד החברה. יובהר כי החברה תגיש את הבקשה להחזר מס על סמך מידע שהתקבל מאת הלקוח כמו שהוא וכי לחברה אין אחריות ישירה ו/או שילוחית לנכונותו, כמו כן לחברה לא תהיה כל אחריות כלפי הלקוח, במישרין ו/או בעקיפין, בכל דרישה שהיא, בעבר, הווה ובעתיד, של רשויות המס והמוסד לביטוח לאומי מהלקוח, לרבות חבות מס ו/או שינויים בתקנות שיכולים להשפיע על אי קבלת ההחזר, סכום ההחזר ו/או מועד קבלתו.
+
+8. בעת מסירת פרטים אישיים, בהזמנת שירות או מוצר, מאשר הלקוח לחברה לפנות אליו בכל אמצעי תקשורת שתראה לנכון, בהצעות ומידע שיווקי ופרסומי (לרבות על פי סעיף 30א' לחוק התקשורת) הקשור לשירותי החברה ולמוצרים המשווקים באמצעותה. אם אין הלקוח מעוניין בפניות החברה בכלל או באמצעות אמצעי תקשורת ספציפי בפרט, עליו להודיע על כך לחברה באחת מדרכי התקשורת המפורטות באתר החברה.
+
+18. תנאי תשלום: הלקוח מתחייב לשלם לחברה עמלה בגובה של ${clientData.commissionRate} מסכום ההחזר בתוספת מע"מ (להלן: "עמלה") וזאת רק לאחר קבלת הכסף לחשבון הבנק של הלקוח.
+
+[... המשך תנאי החוזה עד סוף המסמך...]`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 font-hebrew">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-border/50">
-        <div className="container mx-auto px-4 py-6">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-primary mb-2">
-              {companyInfo.name}
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              פורטל לקוחות - החזרי מס דיגיטלי
-            </p>
+    <PortalLayout
+      currentStep={1}
+      totalSteps={4}
+      onNext={handleNext}
+      nextLabel="אני מסכים להמשך"
+    >
+      <div className="space-y-6 animate-fade-in">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="bg-primary/10 p-4 rounded-full">
+              <FileText className="h-8 w-8 text-primary" />
+            </div>
           </div>
+          <h1 className="text-3xl font-bold text-foreground">הסכם שירות</h1>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            אנא קרא את הסכם השירות בעיון לפני המעבר לשלב הבא. החוזה מפרט את התנאים והזכויות שלך.
+          </p>
         </div>
-      </header>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-8">
-          
-          {/* Welcome Card */}
-          <Card className="shadow-card animate-fade-in">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl">ברוכים הבאים לפורטל הלקוחות</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <p className="text-center text-muted-foreground">
-                התחל את תהליך החזר המס הדיגיטלי שלך בצורה פשוטה, מהירה ובטוחה
-              </p>
-              
-              <div className="max-w-md mx-auto space-y-4">
-                <div>
-                  <Label htmlFor="leadId">מספר לקוח</Label>
-                  <Input
-                    id="leadId"
-                    type="text"
-                    placeholder="הזן את מספר הלקוח שלך"
-                    value={leadId}
-                    onChange={(e) => setLeadId(e.target.value)}
-                    className="text-center"
-                    dir="ltr"
-                  />
-                </div>
-                
-                <Button 
-                  onClick={handleStartProcess}
-                  className="w-full flex items-center gap-2"
-                  size="lg"
-                >
-                  התחל תהליך
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
+        {/* Contract Content */}
+        <Card className="shadow-card">
+          <CardContent className="p-8">
+            <div className="prose prose-sm max-w-none text-right leading-relaxed">
+              <pre className="text-sm leading-7 whitespace-pre-wrap font-hebrew text-right bg-muted/20 p-6 rounded-lg border">
+                {contractText}
+              </pre>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Important Notice */}
+        <Card className="border-warning shadow-card">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="bg-warning/10 p-2 rounded-full mt-1">
+                <FileText className="h-4 w-4 text-warning" />
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Process Steps */}
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="text-center">שלבי התהליך</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {processSteps.map((step, index) => (
-                  <div key={index} className="text-center space-y-3">
-                    <div className="bg-primary/10 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
-                      <step.icon className="h-8 w-8 text-primary" />
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="font-semibold">{step.title}</h3>
-                      <p className="text-sm text-muted-foreground">{step.description}</p>
-                    </div>
-                    <div className="text-2xl font-bold text-primary">{index + 1}</div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* About Section */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle>אודות השירות</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <h3 className="font-semibold text-warning">שים לב</h3>
                 <p className="text-sm text-muted-foreground">
-                  אנחנו מתמחים בהחזרי מס לשכירים ומספקים שירות מקצועי ואמין.
-                  הצוות שלנו כולל רואי חשבון ויועצי מס מנוסים.
-                </p>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-success" />
-                    <span>בדיקת זכאות ללא עלות מראש</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-success" />
-                    <span>עמלה רק במקרה של החזר בפועל</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-success" />
-                    <span>ליווי מקצועי לאורך כל התהליך</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle>פרטי יצירת קשר</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-4 w-4 text-primary" />
-                    <span className="text-sm">{companyInfo.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 text-primary" />
-                    <span className="text-sm">{companyInfo.email}</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <MapPin className="h-4 w-4 text-primary mt-1" />
-                    <span className="text-sm">{companyInfo.address}</span>
-                  </div>
-                </div>
-                
-                <div className="pt-3 border-t border-border">
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <div>{companyInfo.legalName}</div>
-                    <div>{companyInfo.registration}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Security Notice */}
-          <Card className="border-primary/20 bg-primary/5 shadow-card">
-            <CardContent className="pt-6">
-              <div className="text-center space-y-2">
-                <h3 className="font-semibold text-primary">אבטחת מידע</h3>
-                <p className="text-sm text-muted-foreground">
-                  כל המידע והמסמכים נשמרים בצורה מוצפנת ובטוחה בהתאם לתקני האבטחה הגבוהים ביותר.
-                  אנו מקפידים על הגנת הפרטיות שלך ועל שמירת סודיות המידע.
+                  על ידי לחיצה על "אני מסכים להמשך" אתה מאשר שקראת והבנת את תנאי ההסכם ומסכים לכל התנאים המפורטים בו.
                 </p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </PortalLayout>
   );
 };

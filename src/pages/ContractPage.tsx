@@ -86,50 +86,6 @@ export const ContractPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Client Info Card */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              פרטי הלקוח
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">שם מלא:</span>
-                  <span className="font-medium">{clientData.firstName} {clientData.lastName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">תעודת זהות:</span>
-                  <span className="font-medium">{clientData.idNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">טלפון:</span>
-                  <span className="font-medium">{clientData.phone}</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">אימייל:</span>
-                  <span className="font-medium">{clientData.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">עמלה:</span>
-                  <Badge variant="secondary">{clientData.commissionRate}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">תאריך:</span>
-                  <span className="font-medium flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {new Date().toLocaleDateString('he-IL')}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Contract Content */}
         <Card className="shadow-card">
@@ -137,8 +93,8 @@ export const ContractPage: React.FC = () => {
             <CardTitle>תוכן ההסכם</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="bg-muted/30 p-6 rounded-lg max-h-96 overflow-y-auto">
-              <pre className="text-sm leading-relaxed whitespace-pre-wrap font-hebrew text-right">
+            <div className="prose prose-sm max-w-none text-right leading-relaxed">
+              <pre className="text-sm leading-7 whitespace-pre-wrap font-hebrew text-right bg-muted/20 p-6 rounded-lg border">
                 {contractText}
               </pre>
             </div>

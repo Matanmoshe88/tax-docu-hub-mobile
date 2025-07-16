@@ -20,7 +20,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/contract/:leadId" element={<ContractPage />} />
+          <Route path="/:leadId" element={<HomePage />} />
           <Route path="/signature/:leadId" element={<SignaturePage />} />
           <Route path="/documents/:leadId" element={<DocumentsPage />} />
           <Route path="/finish/:leadId" element={<FinishPage />} />

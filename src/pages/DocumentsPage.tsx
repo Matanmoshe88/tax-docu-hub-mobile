@@ -3,17 +3,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { 
   Upload, 
-  FileText, 
   CreditCard, 
   Car, 
-  Check, 
-  X, 
-  Eye,
-  AlertCircle 
+  FileText,
+  Lock,
+  Unlock,
+  Eye
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -24,9 +22,9 @@ interface Document {
   icon: React.ElementType;
   required: boolean;
   uploaded: boolean;
-  category: 'identity' | 'financial' | 'business';
+  locked: boolean;
   file?: File;
-  uploadProgress?: number;
+  alternative?: string;
 }
 
 export const DocumentsPage: React.FC = () => {
@@ -42,7 +40,8 @@ export const DocumentsPage: React.FC = () => {
       icon: CreditCard,
       required: true,
       uploaded: false,
-      category: 'identity'
+      locked: false,
+      alternative: 'driver-license'
     },
     {
       id: 'driver-license',
@@ -51,55 +50,43 @@ export const DocumentsPage: React.FC = () => {
       icon: Car,
       required: true,
       uploaded: false,
-      category: 'identity'
+      locked: false,
+      alternative: 'id-card'
+    },
+    {
+      id: 'id-supplement',
+      title: 'ספח תז',
+      description: 'ספח תעודת הזהות (אם יש)',
+      icon: FileText,
+      required: false,
+      uploaded: false,
+      locked: false
     },
     {
       id: 'bank-statement',
-      title: 'אישור ניהול חשבון',
+      title: 'אישור ניהול חשבון בנק',
       description: 'אישור מהבנק על ניהול חשבון עדכני',
       icon: FileText,
       required: true,
       uploaded: false,
-      category: 'financial'
-    },
-    {
-      id: 'tax-documents',
-      title: 'מסמכי מס',
-      description: 'דוחות מס קודמים (אם יש)',
-      icon: FileText,
-      required: false,
-      uploaded: false,
-      category: 'financial'
+      locked: false
     }
   ]);
 
-  const totalDocuments = documents.length;
-  const uploadedDocuments = documents.filter(doc => doc.uploaded).length;
-  const requiredDocuments = documents.filter(doc => doc.required);
-  const uploadedRequiredDocuments = requiredDocuments.filter(doc => doc.uploaded).length;
-  const allRequiredUploaded = uploadedRequiredDocuments === requiredDocuments.length;
+  const hasIdentityDocument = documents.some(doc => 
+    (doc.id === 'id-card' || doc.id === 'driver-license') && doc.uploaded
+  );
+  
+  const hasBankStatement = documents.some(doc => 
+    doc.id === 'bank-statement' && doc.uploaded
+  );
+  
+  const canFinish = hasIdentityDocument && hasBankStatement;
 
   const handleFileUpload = async (docId: string, file: File) => {
     setDocuments(prev => prev.map(doc => 
       doc.id === docId 
-        ? { ...doc, file, uploadProgress: 0 }
-        : doc
-    ));
-
-    // Simulate upload progress
-    for (let progress = 0; progress <= 100; progress += 10) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      setDocuments(prev => prev.map(doc => 
-        doc.id === docId 
-          ? { ...doc, uploadProgress: progress }
-          : doc
-      ));
-    }
-
-    // Mark as uploaded
-    setDocuments(prev => prev.map(doc => 
-      doc.id === docId 
-        ? { ...doc, uploaded: true, uploadProgress: undefined }
+        ? { ...doc, file, uploaded: true, locked: true }
         : doc
     ));
 
@@ -137,37 +124,40 @@ export const DocumentsPage: React.FC = () => {
     }
   };
 
-  const removeDocument = (docId: string) => {
+  const unlockDocument = (docId: string) => {
     setDocuments(prev => prev.map(doc => 
       doc.id === docId 
-        ? { ...doc, uploaded: false, file: undefined, uploadProgress: undefined }
+        ? { ...doc, locked: false }
         : doc
     ));
   };
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'identity': return <CreditCard className="h-4 w-4" />;
-      case 'financial': return <FileText className="h-4 w-4" />;
-      case 'business': return <FileText className="h-4 w-4" />;
-      default: return <FileText className="h-4 w-4" />;
-    }
+  const removeDocument = (docId: string) => {
+    setDocuments(prev => prev.map(doc => 
+      doc.id === docId 
+        ? { ...doc, uploaded: false, file: undefined, locked: false }
+        : doc
+    ));
   };
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'identity': return 'bg-blue-500/10 text-blue-700 border-blue-200';
-      case 'financial': return 'bg-green-500/10 text-green-700 border-green-200';
-      case 'business': return 'bg-purple-500/10 text-purple-700 border-purple-200';
-      default: return 'bg-gray-500/10 text-gray-700 border-gray-200';
+  const getRequirementText = (doc: Document) => {
+    if (doc.required) {
+      if (doc.alternative) {
+        const altDoc = documents.find(d => d.id === doc.alternative);
+        if (altDoc?.uploaded) {
+          return 'רשות'; // Alternative uploaded, this becomes optional
+        }
+      }
+      return 'נדרש';
     }
+    return 'רשות';
   };
 
   const handleNext = () => {
-    if (!allRequiredUploaded) {
+    if (!canFinish) {
       toast({
         title: "חסרים מסמכים נדרשים",
-        description: "אנא העלה את כל המסמכים הנדרשים לפני המעבר לשלב הבא",
+        description: "אנא העלה תעודת זהות או רישיון נהיגה + אישור ניהול חשבון",
         variant: "destructive",
       });
       return;
@@ -188,7 +178,7 @@ export const DocumentsPage: React.FC = () => {
       onPrevious={handlePrevious}
       nextLabel="סיום העלאת מסמכים"
       previousLabel="חזור לחתימה"
-      isNextDisabled={!allRequiredUploaded}
+      isNextDisabled={!canFinish}
     >
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
@@ -204,40 +194,18 @@ export const DocumentsPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Progress Overview */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>התקדמות העלאת מסמכים</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between text-sm">
-              <span>הועלו {uploadedDocuments} מתוך {totalDocuments} מסמכים</span>
-              <span className="text-muted-foreground">
-                {Math.round((uploadedDocuments / totalDocuments) * 100)}%
-              </span>
-            </div>
-            <Progress value={(uploadedDocuments / totalDocuments) * 100} className="h-3" />
-            
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-success rounded-full"></div>
-                <span>נדרשים: {uploadedRequiredDocuments}/{requiredDocuments.length}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-muted rounded-full"></div>
-                <span>אופציונליים</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Documents List */}
         <div className="space-y-4">
           {documents.map((doc) => (
-            <Card key={doc.id} className="shadow-card hover:shadow-lg transition-shadow">
+            <Card 
+              key={doc.id} 
+              className={`shadow-card hover:shadow-lg transition-all ${
+                doc.uploaded ? 'ring-2 ring-success/20 bg-success/5' : ''
+              }`}
+            >
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  <div className={`p-3 rounded-lg ${getCategoryColor(doc.category)}`}>
+                  <div className="p-3 rounded-lg bg-primary/10 text-primary">
                     <doc.icon className="h-6 w-6" />
                   </div>
                   
@@ -246,48 +214,43 @@ export const DocumentsPage: React.FC = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-lg">{doc.title}</h3>
-                          {doc.required ? (
-                            <Badge variant="destructive" className="text-xs">נדרש</Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">אופציונלי</Badge>
+                          {doc.uploaded && (
+                            <Lock className="h-4 w-4 text-success" />
                           )}
                         </div>
                         <p className="text-muted-foreground text-sm mt-1">{doc.description}</p>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          {getRequirementText(doc)}
+                        </div>
                       </div>
                       
                       <div className="flex items-center gap-2">
                         {doc.uploaded ? (
-                          <>
-                            <div className="flex items-center gap-1 text-success text-sm">
-                              <Check className="h-4 w-4" />
-                              <span>הועלה</span>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeDocument(doc.id)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </>
-                        ) : (
-                          <div className="text-muted-foreground text-sm flex items-center gap-1">
-                            <AlertCircle className="h-4 w-4" />
-                            <span>לא הועלה</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="success" className="text-xs">הועלה</Badge>
+                            {doc.locked ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => unlockDocument(doc.id)}
+                              >
+                                <Unlock className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeDocument(doc.id)}
+                              >
+                                <Upload className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     </div>
 
-                    {doc.uploadProgress !== undefined ? (
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>מעלה קובץ...</span>
-                          <span>{doc.uploadProgress}%</span>
-                        </div>
-                        <Progress value={doc.uploadProgress} className="h-2" />
-                      </div>
-                    ) : !doc.uploaded ? (
+                    {!doc.uploaded && (
                       <div>
                         <input
                           type="file"
@@ -297,7 +260,7 @@ export const DocumentsPage: React.FC = () => {
                           onChange={(e) => handleFileInputChange(doc.id, e)}
                         />
                         <Button
-                          variant="upload"
+                          variant="outline"
                           className="w-full sm:w-auto"
                           onClick={() => document.getElementById(`file-${doc.id}`)?.click()}
                         >
@@ -305,11 +268,13 @@ export const DocumentsPage: React.FC = () => {
                           העלה קובץ
                         </Button>
                       </div>
-                    ) : (
+                    )}
+
+                    {doc.uploaded && doc.file && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Eye className="h-4 w-4" />
-                        <span>{doc.file?.name}</span>
-                        <span>({(doc.file?.size || 0 / 1024 / 1024).toFixed(1)} MB)</span>
+                        <span>{doc.file.name}</span>
+                        <span>({(doc.file.size / 1024 / 1024).toFixed(1)} MB)</span>
                       </div>
                     )}
                   </div>
@@ -327,7 +292,9 @@ export const DocumentsPage: React.FC = () => {
               <ul className="space-y-1 text-sm text-muted-foreground">
                 <li>• קבצים מותרים: PDF, JPG, PNG</li>
                 <li>• גודל מקסימלי: 5MB לקובץ</li>
-                <li>• ודא שהמסמכים ברורים וקריאים</li>
+                <li>• תעודת זהות ורישיון נהיגה הם חלופיים (מספיק אחד מהם)</li>
+                <li>• אישור ניהול חשבון בנק - נדרש</li>
+                <li>• ספח תז - רשות</li>
                 <li>• המידע יישמר בצורה מוצפנת ובטוחה</li>
               </ul>
             </div>
