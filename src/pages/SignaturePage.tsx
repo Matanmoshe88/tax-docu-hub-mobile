@@ -40,29 +40,25 @@ export const SignaturePage: React.FC = () => {
     commissionRate: "25%"
   });
 
-  // Prevent phone back button navigation after signing
+  // Disable browser back button completely
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
-      if (isSigned) {
-        e.preventDefault();
-        window.history.pushState(null, '', window.location.pathname);
-        toast({
-          title: "לא ניתן לחזור",
-          description: "לא ניתן לחזור לאחר החתימה על ההסכם",
-          variant: "destructive",
-        });
-      }
+      e.preventDefault();
+      window.history.pushState(null, '', window.location.pathname);
+      toast({
+        title: "ניווט מוגבל",
+        description: "אנא השתמש בכפתורי הניווט בעמוד",
+        variant: "destructive",
+      });
     };
 
-    if (isSigned) {
-      window.history.pushState(null, '', window.location.pathname);
-      window.addEventListener('popstate', handlePopState);
-    }
+    window.history.pushState(null, '', window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [isSigned, toast]);
+  }, [toast]);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -70,6 +66,8 @@ export const SignaturePage: React.FC = () => {
 
     setIsDrawing(true);
     const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -77,6 +75,7 @@ export const SignaturePage: React.FC = () => {
     let clientX, clientY;
     
     if ('touches' in e) {
+      e.preventDefault(); // Prevent scrolling on mobile
       clientX = e.touches[0].clientX;
       clientY = e.touches[0].clientY;
     } else {
@@ -84,7 +83,10 @@ export const SignaturePage: React.FC = () => {
       clientY = e.clientY;
     }
     
-    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+    
+    ctx.moveTo(x, y);
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -94,13 +96,15 @@ export const SignaturePage: React.FC = () => {
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     let clientX, clientY;
     
     if ('touches' in e) {
-      e.preventDefault();
+      e.preventDefault(); // Prevent scrolling on mobile
       clientX = e.touches[0].clientX;
       clientY = e.touches[0].clientY;
     } else {
@@ -108,10 +112,14 @@ export const SignaturePage: React.FC = () => {
       clientY = e.clientY;
     }
 
-    ctx.lineWidth = 2;
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+
+    ctx.lineWidth = 3;
     ctx.lineCap = 'round';
-    ctx.strokeStyle = '#1a365d';
-    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#1e40af'; // Blue color for pen-like appearance
+    ctx.lineTo(x, y);
     ctx.stroke();
     
     setHasSignature(true);
@@ -373,10 +381,6 @@ export const SignaturePage: React.FC = () => {
   };
 
   const handlePrevious = () => {
-    if (isSigned) {
-      // Don't allow going back after signing
-      return;
-    }
     navigate(`/contract/${leadId}`);
   };
 
@@ -385,9 +389,9 @@ export const SignaturePage: React.FC = () => {
       currentStep={2}
       totalSteps={4}
       onNext={handleNext}
-      onPrevious={!isSigned ? handlePrevious : undefined}
-      nextLabel={isSubmitting ? "שומר..." : "שמור וגשת המשך"}
-      previousLabel={!isSigned ? "חזור להסכם" : undefined}
+      onPrevious={handlePrevious}
+      nextLabel={isSubmitting ? "שומר..." : "שמור והמשך"}
+      previousLabel="חזור להסכם"
       isNextDisabled={isSubmitting}
     >
       <div className="space-y-6 animate-fade-in">

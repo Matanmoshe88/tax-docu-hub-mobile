@@ -4,6 +4,8 @@ import { PortalLayout } from '@/components/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FileText, User, Calendar } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface ClientData {
   firstName: string;
@@ -18,6 +20,7 @@ interface ClientData {
 export const ContractPage: React.FC = () => {
   const navigate = useNavigate();
   const { leadId } = useParams();
+  const { toast } = useToast();
   const [clientData, setClientData] = useState<ClientData>({
     firstName: "יוסי",
     lastName: "כהן", 
@@ -27,11 +30,93 @@ export const ContractPage: React.FC = () => {
     address: "רחוב הרצל 1, תל אביב",
     commissionRate: "25%"
   });
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchSalesforceData = async () => {
+    if (!leadId || leadId === 'demo') {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      console.log('🔄 Fetching Salesforce data for lead:', leadId);
+      
+      const { data, error } = await supabase.functions.invoke('salesforce-data', {
+        body: { leadId },
+      });
+
+      if (error) {
+        console.error('❌ Supabase function error:', error);
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן לטעון את נתוני הלקוח",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data?.success) {
+        console.error('❌ Salesforce data error:', data?.error);
+        toast({
+          title: "שגיאה",
+          description: data?.error || "לא ניתן לטעון את נתוני הלקוח",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const { leadData } = data.data;
+      console.log('✅ Salesforce data loaded successfully');
+
+      // Update client data with real Salesforce data
+      const nameParts = leadData.Name ? leadData.Name.split(' ') : ['', ''];
+      setClientData({
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' ') || '',
+        idNumber: leadData.id__c || '',
+        phone: leadData.MobilePhone || '',
+        email: 'client@email.com',
+        address: leadData.fulladress__c || '',
+        commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : '25%'
+      });
+
+    } catch (error) {
+      console.error('💥 Error fetching Salesforce data:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לטעון את נתוני הלקוח",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // TODO: Fetch client data from Salesforce based on leadId
-    console.log('Loading client data for lead:', leadId);
+    fetchSalesforceData();
   }, [leadId]);
+
+  // Disable browser back button
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      window.history.pushState(null, '', window.location.pathname);
+      toast({
+        title: "ניווט מוגבל",
+        description: "אנא השתמש בכפתורי הניווט בעמוד",
+        variant: "destructive",
+      });
+    };
+
+    window.history.pushState(null, '', window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [toast]);
 
   const handleNext = () => {
     navigate(`/signature/${leadId}`);
@@ -41,9 +126,11 @@ export const ContractPage: React.FC = () => {
     navigate('/');
   };
 
-  const contractText = `בין : קוויק טקס (שם רשום: "ג'י.אי.אמ גלובל")   ח"פ: 513218453      (להלן: "קוויקטקס" ו/או "החברה")
+  const contractText = `הסכם שירות להחזרי מס
+
+בין : קוויק טקס (שם רשום: "ג'י.אי.אמ גלובל")   ח"פ: 513218453      (להלן: "קוויקטקס" ו/או "החברה")
 לבין: ${clientData.firstName} ${clientData.lastName}                                          ת"ז: ${clientData.idNumber}                                    (להלן: "הלקוח")
-שנחתם בתאריך :
+שנחתם בתאריך : ${new Date().toLocaleDateString('he-IL')}
 
 הואיל והלקוח מאשר בזאת כי הינו מבקש לבדוק את זכאותו להחזרי מס באמצעות ג'י.אי.אמ גלובל ניהול והשקעות בע"מ ח.פ. 513218453 להלן: ("קוויקטקס" ו/או "החברה") שכתובתה ת.ד. 11067, פתח-תקווה מיקוד 4934829 מול כלל הרשויות לרבות מס הכנסה וביטוח לאומי לצורך ייצוגו וטיפולו בקבלת ההחזר ממס הכנסה (להלן: "החזר המס") לשנים 2023-2018 (להלן: "תקופת המס") ולבצע עבורו את הפעולות הנדרשות על מנת לקבל החזר מס במקרה של זכאות;
 והואיל והחברה - המעסיקה רו"ח ויועצי מס ועוסקת במתן שירותים אל מול רשויות המס לשם ביצוע החזרי מס לשכירים והגשת דוחות כספיים- מסכימה ליטול על עצמה את ייצוגו של הלקוח בהליך החזר המס;
@@ -100,6 +187,22 @@ export const ContractPage: React.FC = () => {
 37. כל האמור בהסכם זה בלשון זכר- אף נקבה כמשמע.
 38. בחתימתו על מסמך זה מאשר הלקוח לחברה או מי מטעמה לחתום בשמו ולהגיש בשמו טופס בקשה לרישום ייצוג ראשי/מתן ייפוי כוח של רשות המיסים ועל טופס ייפוי כח למייצג.
 39. להבטחת ביצוע התחייבויותיו לפי הסכם זה, הלקוח חותם מרצונו החופשי ולאחר שהבין את משמעות חתימתו על שטר חוב לטובת החברה. ידוע ללקוח כי החברה תהיה רשאית להגיש את שטר החוב לפירעון ללא כל התראה מוקדמת אם לא ישלם את העמלה המגיעה לחברה לפי הסכם זה. החברה המחזיקה בשטר החוב תהיה רשאית למלא בשטר כל פרט החסר בו והוא יהיה פטור מכל החובות המוטלות על המחזיקה בשטר, לרבות הצגה לתשלום, פרוטסט, הודעת אי כיבוד והודעת חילול שטר. מקום השיפוט הבלעדי והייחודי בכל תביעה על פי שטר החוב כאמור יהיה בבית המשפט המוסמך בפתח-תקווה בלבד.`;
+
+  if (isLoading) {
+    return (
+      <PortalLayout
+        currentStep={1}
+        totalSteps={4}
+        nextLabel="טוען..."
+        onNext={() => {}}
+      >
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">טוען נתוני לקוח...</p>
+        </div>
+      </PortalLayout>
+    );
+  }
 
   return (
     <PortalLayout
