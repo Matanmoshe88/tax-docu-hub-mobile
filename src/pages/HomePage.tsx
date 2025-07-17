@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
@@ -105,7 +104,7 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
           </CardContent>
-        </div>
+        </Card>
       </div>
     </PortalLayout>
   );
