@@ -43,7 +43,7 @@ interface DocumentsSingle {
 
 export const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { clientData, isLoading, recordId } = useSalesforceData();
+  const { clientData, isLoading, recordId, isDataFresh } = useSalesforceData();
   const { toast } = useToast();
   
   const [documents, setDocuments] = useState<Document[]>([
@@ -95,7 +95,7 @@ export const DocumentsPage: React.FC = () => {
     }
   ]);
 
-  // Load document status from session storage
+  // Load document status from session storage when data changes
   useEffect(() => {
     console.log('📋 DocumentsPage recordId from useSalesforceData:', recordId);
     console.log('📋 Current URL recordId should be: 00QWn000002zxExMAI');
@@ -147,7 +147,7 @@ export const DocumentsPage: React.FC = () => {
     } else {
       console.log('📄 No documentsStatus found in session storage');
     }
-  }, []);
+  }, [recordId, isDataFresh]); // Re-run when recordId or fresh data changes
 
   const hasIdentityDocument = documents.some(doc => 
     (doc.id === 'id-card' || doc.id === 'driver-license') && doc.uploaded
