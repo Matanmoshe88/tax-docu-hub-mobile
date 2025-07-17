@@ -125,6 +125,7 @@ export const useSalesforceData = () => {
 
       const { leadData, documentHubId, documents, accessToken, instanceUrl } = data.data;
       console.log('✅ Salesforce data loaded successfully');
+      console.log('📊 API Response data:', { leadData, documentHubId, documents, accessToken: '***', instanceUrl });
 
       // Update client data with real Salesforce data
       const nameParts = leadData.Name ? leadData.Name.split(' ') : ['', ''];
