@@ -98,33 +98,50 @@ export const DocumentsPage: React.FC = () => {
   // Load document status from session storage
   useEffect(() => {
     const documentsStatus = sessionStorage.getItem('documentsStatus');
+    console.log('📋 Raw documentsStatus from session:', documentsStatus);
+    
     if (documentsStatus) {
       try {
         const salesforceDocuments: DocumentsSingle[] = JSON.parse(documentsStatus);
         console.log('📄 Loading document status from Salesforce:', salesforceDocuments);
+        console.log('📝 Local document types:', documents.map(d => ({ id: d.id, salesforceType: d.salesforceType })));
         
         // Update document status based on Salesforce data
         setDocuments(prev => prev.map(doc => {
+          console.log(`🔍 Checking document ${doc.id} (${doc.salesforceType})`);
+          
           // Find the latest document of this type from Salesforce
           const salesforceDocs = salesforceDocuments
-            .filter(sf => sf.DocumentType__c === doc.salesforceType)
+            .filter(sf => {
+              console.log(`  Comparing SF doc type "${sf.DocumentType__c}" with local type "${doc.salesforceType}"`);
+              return sf.DocumentType__c === doc.salesforceType;
+            })
             .sort((a, b) => new Date(b.CreatedDate).getTime() - new Date(a.CreatedDate).getTime());
+          
+          console.log(`  Found ${salesforceDocs.length} matching documents for ${doc.id}`);
           
           const latestDoc = salesforceDocs[0];
           
-          if (latestDoc && latestDoc.Status__c === 'הושלם') {
-            return {
-              ...doc,
-              uploaded: true,
-              locked: true
-            };
+          if (latestDoc) {
+            console.log(`  Latest doc for ${doc.id}:`, latestDoc);
+            if (latestDoc.Status__c === 'הושלם') {
+              console.log(`  ✅ Marking ${doc.id} as uploaded and locked`);
+              return {
+                ...doc,
+                uploaded: true,
+                locked: true
+              };
+            }
           }
           
+          console.log(`  ❌ No completed document found for ${doc.id}`);
           return doc;
         }));
       } catch (error) {
         console.error('Error parsing documents status:', error);
       }
+    } else {
+      console.log('📄 No documentsStatus found in session storage');
     }
   }, []);
 
