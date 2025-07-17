@@ -49,21 +49,54 @@ async function getSalesforceToken(): Promise<SalesforceTokenResponse> {
   return tokenData;
 }
 
+async function getDocumentHubId(token: SalesforceTokenResponse, leadId: string): Promise<string> {
+  console.log(`🔍 Finding document hub for lead: ${leadId}`);
+  
+  const query = `SELECT Id FROM Documents__c WHERE Lead__c='${leadId}' ORDER BY CreatedDate DESC LIMIT 1`;
+  const encodedQuery = encodeURIComponent(query);
+  
+  const hubResponse = await fetch(
+    `${token.instance_url}/services/data/v60.0/query/?q=${encodedQuery}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${token.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  if (!hubResponse.ok) {
+    const errorText = await hubResponse.text();
+    throw new Error(`Failed to fetch document hub: ${hubResponse.status} - ${errorText}`);
+  }
+
+  const hubData = await hubResponse.json();
+  
+  if (!hubData.records || hubData.records.length === 0) {
+    throw new Error('No document hub found for this lead');
+  }
+
+  const hubId = hubData.records[0].Id;
+  console.log(`✅ Document hub found: ${hubId}`);
+  return hubId;
+}
+
 async function uploadDocumentToSalesforce(
   token: SalesforceTokenResponse,
   leadId: string,
-  signatureUrl: string
+  signatureUrl: string,
+  hubId: string
 ): Promise<any> {
   console.log(`🔄 Uploading document to Salesforce for lead: ${leadId}`);
   
-  const salesforceUrl = 'https://quicktaxs.my.salesforce.com/services/data/v60.0/sobjects/DocumentsSingles__c/';
+  const salesforceUrl = `${token.instance_url}/services/data/v60.0/sobjects/DocumentsSingles__c/`;
   
   const documentData = {
     Name: "חתימה",
     Lead__c: leadId,
     DocumentType__c: "חתימה",
     doc_url__c: signatureUrl,
-    DocumentManager__c: "a0UWn000000tgUrMAI"
+    DocumentManager__c: hubId
   };
 
   console.log('📄 Document data:', JSON.stringify(documentData, null, 2));
@@ -126,8 +159,11 @@ serve(async (req) => {
     // Step 1: Get Salesforce access token
     const token = await getSalesforceToken();
 
-    // Step 2: Upload document to Salesforce
-    const uploadResult = await uploadDocumentToSalesforce(token, leadId, signatureUrl);
+    // Step 2: Get document hub ID
+    const hubId = await getDocumentHubId(token, leadId);
+
+    // Step 3: Upload document to Salesforce
+    const uploadResult = await uploadDocumentToSalesforce(token, leadId, signatureUrl, hubId);
 
     const response = {
       success: true,
