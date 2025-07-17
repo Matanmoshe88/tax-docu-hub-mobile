@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
@@ -29,8 +30,8 @@ export const SignaturePage: React.FC = () => {
   const [isSigned, setIsSigned] = useState(false);
   const { toast } = useToast();
   
-  // Client data - TODO: fetch from Salesforce
-  const [clientData] = useState<ClientData>({
+  // Client data from Salesforce
+  const [clientData, setClientData] = useState<ClientData>({
     firstName: "יוסי",
     lastName: "כהן", 
     idNumber: "123456789",
@@ -39,6 +40,27 @@ export const SignaturePage: React.FC = () => {
     address: "רחוב הרצל 1, תל אביב",
     commissionRate: "25%"
   });
+
+  // Load client data from session storage
+  useEffect(() => {
+    const storedClientData = sessionStorage.getItem('clientData');
+    if (storedClientData) {
+      try {
+        const data = JSON.parse(storedClientData);
+        setClientData({
+          firstName: data.FirstName || "יוסי",
+          lastName: data.LastName || "כהן",
+          idNumber: data.Id_Number__c || "123456789",
+          phone: data.Phone || "050-1234567",
+          email: data.Email || "yossi.cohen@email.com",
+          address: `${data.Street || "רחוב הרצל 1"}, ${data.City || "תל אביב"}`,
+          commissionRate: data.Commission_Rate__c ? `${data.Commission_Rate__c}%` : "25%"
+        });
+      } catch (error) {
+        console.error('Error parsing client data:', error);
+      }
+    }
+  }, []);
 
   // Disable browser back button completely
   useEffect(() => {
@@ -75,7 +97,7 @@ export const SignaturePage: React.FC = () => {
     let clientX, clientY;
     
     if ('touches' in e) {
-      e.preventDefault(); // Prevent scrolling on mobile
+      e.preventDefault();
       clientX = e.touches[0].clientX;
       clientY = e.touches[0].clientY;
     } else {
@@ -104,7 +126,7 @@ export const SignaturePage: React.FC = () => {
     let clientX, clientY;
     
     if ('touches' in e) {
-      e.preventDefault(); // Prevent scrolling on mobile
+      e.preventDefault();
       clientX = e.touches[0].clientX;
       clientY = e.touches[0].clientY;
     } else {
@@ -190,7 +212,7 @@ export const SignaturePage: React.FC = () => {
   const generateSignedContract = async (signatureDataURL: string): Promise<Blob> => {
     console.log('🔄 Generating signed contract PDF...');
     
-    // Create a virtual contract document with signature
+    // Create the exact same contract content as displayed in ContractPage
     const contractDiv = document.createElement('div');
     contractDiv.style.cssText = `
       width: 210mm;
@@ -204,26 +226,83 @@ export const SignaturePage: React.FC = () => {
       text-align: right;
     `;
     
-    const contractText = `הסכם שירות להחזרי מס
+    const currentDate = new Date().toLocaleDateString('he-IL');
+    
+    const contractContent = `
+הסכם שירות להחזרי מס
 
-בין : קוויק טקס (שם רשום: "ג'י.אי.אמ גלובל")   ח"פ: 513218453      (להלן: "קוויקטקס" ו/או "החברה")
-לבין: ${clientData.firstName} ${clientData.lastName}                                          ת"ז: ${clientData.idNumber}                                    (להלן: "הלקוח")
-שנחתם בתאריך : ${new Date().toLocaleDateString('he-IL')}
+בין: קוויק טקס (שם רשום: "ג'י.אי.אמ גלובל") ח"פ: 513218453 (להלן: "קוויקטקס" ו/או "החברה")
+לבין: ${clientData.firstName} ${clientData.lastName} ת"ז: ${clientData.idNumber} (להלן: "הלקוח")
+שנחתם בתאריך: ${currentDate}
 
-[כל תוכן ההסכם הקיים...]
+הואיל וקוויקטקס עוסקת בין השאר במתן שירותי ייעוץ מס והכנת דוחות לרשויות המס;
+
+והואיל והלקוח מעוניין לקבל מקוויקטקס שירותי הגשת דוח שנתי לפקיד השומה וטיפול בהחזר מס שנתי;
+
+והואיל וקוויקטקס מעוניינת לתת ללקוח השירותים הנ"ל, הכל בכפוף לתנאים המפורטים להלן;
+
+לפיכך הוסכם, הותנה והוצהר בין הצדדים כדלקמן:
+
+1. מבוא והגדרות
+1.1. המבוא להסכם זה מהווה חלק בלתי נפרד הימנו.
+1.2. בהסכם זה יהיו למונחים הבאים הפירושים שלצידם:
+"שירותים" - הכנת דוח שנתי והגשתו לפקיד השומה וטיפול בקבלת החזר מס שנתי עבור הלקוח.
+"דמי שירות" - התמורה שישלם הלקוח לקוויקטקס תמורת השירותים, כמפורט בסעיף 4 להלן.
+
+2. השירותים
+2.1. קוויקטקס תספק ללקוח את השירותים הבאים:
+א. הכנת דוח שנתי עבור הלקוח על בסיס המסמכים שיומצאו על ידי הלקוח.
+ב. הגשת הדוח השנתי לפקיד השומה.
+ג. מעקב אחר קבלת החזר המס ממשרד האוצר.
+ד. העברת סכום החזר המס ללקוח בניכוי דמי השירות.
+
+2.2. הלקוח מתחייב להמציא לקוויקטקס את כל המסמכים הנדרשים להכנת הדוח השנתי.
+
+3. מחויבויות הלקוח
+3.1. הלקוח מתחייב להמציא לקוויקטקס את כל המסמכים הנדרשים להכנת הדוח השנתי.
+3.2. הלקוח מתחייב כי המידע שימסור לקוויקטקס יהיה מדויק ונכון.
+3.3. הלקוח מתחייב לחתום על כל מסמך שיידרש לצורך הגשת הדוח והקבלת החזר המס.
+
+4. התמורה
+4.1. דמי השירות יהיו בשיעור של ${clientData.commissionRate} מסכום החזר המס שיתקבל בפועל.
+4.2. דמי השירות ינוכו מסכום החזר המס טרם העברתו ללקוח.
+4.3. במקרה שלא יתקבל החזר מס, לא ישלם הלקוח דמי שירות.
+
+5. משך ההסכם
+5.1. הסכם זה יהיה בתוקף לתקופה של שנה אחת ממועד חתימתו.
+5.2. ההסכם יתחדש אוטומטית לתקופות נוספות של שנה, אלא אם כן הודיע אחד הצדדים על רצונו להביא ההסכם לידי סיום.
+
+6. ביטול ההסכם
+6.1. כל צד רשאי לבטל הסכם זה בהודעה מוקדמת של 30 יום.
+6.2. במקרה של ביטול ההסכם, יישאר הלקוח חייב בתשלום דמי שירות עבור שירותים שכבר ניתנו.
+
+7. אחריות ושיפוי
+7.1. קוויקטקס תהיה אחראית לנזקים ישירים בלבד שייגרמו ללקוח כתוצאה מהפרת התחייבויותיה על פי הסכם זה.
+7.2. אחריותה של קוויקטקס תהיה מוגבלת לסכום דמי השירות ששולמו בפועל.
+
+8. הוראות כלליות
+8.1. הסכם זה מבטא את מלוא ההסכמה בין הצדדים.
+8.2. שינוי ההסכם יעשה בכתב ובחתימת שני הצדדים.
+8.3. על הסכם זה יחולו דיני מדינת ישראל.
 
 שטר חוב
-שנערך ונחתם ביום ${new Date().toLocaleDateString('he-IL')}
-אני הח"מ מתחייב/ת לשלם לפקודת ג'י.אי.אמ גלובל ניהול והשקעות בע"מ ח.פ. 513218453 
 
-שם מלא: ${clientData.firstName} ${clientData.lastName}     מספר תעודת זהות: ${clientData.idNumber}
+שנערך ונחתם ביום ${currentDate}
+
+אני הח"מ מתחייב/ת לשלם לפקודת ג'י.אי.אמ גלובל ניהול והשקעות בע"מ ח.פ. 513218453
+את הסכום שיגיע כדמי שירות בהתאם להסכם השירות החתום ביני לבינה.
+
+שם מלא: ${clientData.firstName} ${clientData.lastName}
+מספר תעודת זהות: ${clientData.idNumber}
 כתובת: ${clientData.address}
+טלפון: ${clientData.phone}
+אימייל: ${clientData.email}
 
 חתימת עושה השטר:`;
 
     contractDiv.innerHTML = `
-      <div style="white-space: pre-wrap;">${contractText}</div>
-      <div style="margin-top: 20px;">
+      <div style="white-space: pre-wrap; margin-bottom: 30px;">${contractContent}</div>
+      <div>
         <img src="${signatureDataURL}" style="width: 200px; height: auto; display: block;" />
       </div>
     `;
@@ -309,6 +388,7 @@ export const SignaturePage: React.FC = () => {
       
       // Save signature locally (for PDF generation)
       localStorage.setItem(`signature-${leadId}`, signatureDataURL);
+      localStorage.setItem(`clientData-${leadId}`, JSON.stringify(clientData));
       console.log('✅ Signature saved to localStorage');
 
       // Upload signature to Supabase storage

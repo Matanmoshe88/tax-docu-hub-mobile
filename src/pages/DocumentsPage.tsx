@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateContractPDF } from '@/lib/pdfGenerator';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Document {
   id: string;
@@ -27,7 +29,8 @@ interface Document {
   locked: boolean;
   file?: File;
   alternative?: string;
-  salesforceType: string; // Maps to DocumentType__c in Salesforce
+  salesforceType: string;
+  salesforceName: string;
 }
 
 interface DocumentsSingle {
@@ -53,7 +56,8 @@ export const DocumentsPage: React.FC = () => {
       uploaded: false,
       locked: false,
       alternative: 'driver-license',
-      salesforceType: 'צילום תז קדימה'
+      salesforceType: 'צילום תז קדימה',
+      salesforceName: 'תעודת זהות'
     },
     {
       id: 'driver-license',
@@ -64,7 +68,8 @@ export const DocumentsPage: React.FC = () => {
       uploaded: false,
       locked: false,
       alternative: 'id-card',
-      salesforceType: 'צילום רישיון נהיגה'
+      salesforceType: 'צילום רישיון נהיגה',
+      salesforceName: 'רישיון נהיגה'
     },
     {
       id: 'id-supplement',
@@ -74,7 +79,8 @@ export const DocumentsPage: React.FC = () => {
       required: false,
       uploaded: false,
       locked: false,
-      salesforceType: 'ספח תז'
+      salesforceType: 'ספח תז',
+      salesforceName: 'ספח'
     },
     {
       id: 'bank-statement',
@@ -84,7 +90,8 @@ export const DocumentsPage: React.FC = () => {
       required: true,
       uploaded: false,
       locked: false,
-      salesforceType: 'אישור ניהול חשבון'
+      salesforceType: 'אישור ניהול חשבון',
+      salesforceName: 'אישור ניהול חשבון'
     }
   ]);
 
@@ -131,17 +138,95 @@ export const DocumentsPage: React.FC = () => {
   
   const canFinish = hasIdentityDocument && hasBankStatement;
 
-  const handleFileUpload = async (docId: string, file: File) => {
-    setDocuments(prev => prev.map(doc => 
-      doc.id === docId 
-        ? { ...doc, file, uploaded: true, locked: true }
-        : doc
-    ));
+  const uploadDocumentToStorage = async (file: File, docId: string): Promise<string> => {
+    console.log('🔄 Uploading document to Supabase storage...');
+    
+    const fileName = `document-${docId}-${leadId}-${Date.now()}.${file.name.split('.').pop()}`;
+    
+    const { data, error } = await supabase.storage
+      .from('signatures')
+      .upload(fileName, file, {
+        contentType: file.type,
+        upsert: false
+      });
 
-    toast({
-      title: "הקובץ הועלה בהצלחה",
-      description: `${documents.find(d => d.id === docId)?.title} נשמר במערכת`,
+    if (error) {
+      console.error('❌ Storage upload error:', error);
+      throw new Error(`Failed to upload document: ${error.message}`);
+    }
+
+    // Get the public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('signatures')
+      .getPublicUrl(fileName);
+
+    console.log('✅ Document uploaded to storage:', publicUrl);
+    return publicUrl;
+  };
+
+  const sendDocumentToSalesforce = async (documentUrl: string, documentType: string, documentName: string) => {
+    console.log('🔄 Sending document to Salesforce...');
+    
+    const { data, error } = await supabase.functions.invoke('salesforce-integration', {
+      body: {
+        leadId,
+        signatureUrl: documentUrl,
+        documentType,
+        documentName
+      }
     });
+
+    if (error) {
+      console.error('❌ Salesforce integration error:', error);
+      throw new Error(`Salesforce integration failed: ${error.message}`);
+    }
+
+    console.log('✅ Document sent to Salesforce successfully:', data);
+    return data;
+  };
+
+  const handleFileUpload = async (docId: string, file: File) => {
+    const document = documents.find(doc => doc.id === docId);
+    if (!document) return;
+
+    try {
+      toast({
+        title: "מעלה קובץ...",
+        description: "מעלה את הקובץ לשירות האחסון",
+      });
+
+      // Upload to storage
+      const documentUrl = await uploadDocumentToStorage(file, docId);
+
+      // Send to Salesforce
+      toast({
+        title: "שולח ל-Salesforce...",
+        description: "מעביר את הקובץ למערכת הניהול",
+      });
+
+      await sendDocumentToSalesforce(documentUrl, document.salesforceType, document.salesforceName);
+
+      // Update local state
+      setDocuments(prev => prev.map(doc => 
+        doc.id === docId 
+          ? { ...doc, file, uploaded: true, locked: true }
+          : doc
+      ));
+
+      toast({
+        title: "הקובץ הועלה בהצלחה! 🎉",
+        description: `${document.title} נשמר במערכת ונשלח ל-Salesforce`,
+      });
+
+    } catch (error) {
+      console.error('💥 Document upload error:', error);
+      
+      toast({
+        title: "שגיאה בהעלאת הקובץ",
+        description: error instanceof Error ? error.message : "אנא נסה שוב",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleFileInputChange = (docId: string, event: React.ChangeEvent<HTMLInputElement>) => {
