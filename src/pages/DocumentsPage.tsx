@@ -97,6 +97,9 @@ export const DocumentsPage: React.FC = () => {
 
   // Load document status from session storage
   useEffect(() => {
+    console.log('📋 DocumentsPage recordId from useSalesforceData:', recordId);
+    console.log('📋 Current URL recordId should be: 00QWn000002zxExMAI');
+    
     const documentsStatus = sessionStorage.getItem('documentsStatus');
     console.log('📋 Raw documentsStatus from session:', documentsStatus);
     

@@ -77,6 +77,7 @@ export const useSalesforceData = () => {
 
     try {
       console.log('🔄 Fetching Salesforce data for record:', recordId);
+      console.log('🔄 Expected recordId should be: 00QWn000002zxExMAI');
       
       const { data, error } = await supabase.functions.invoke('salesforce-data', {
         body: { leadId: recordId },
