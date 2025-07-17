@@ -190,62 +190,21 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const leadId = url.searchParams.get('leadId');
-
+    // Get leadId from request body
+    const body = await req.json().catch(() => ({}));
+    const leadId = body.leadId;
+    
     if (!leadId) {
-      // Check if leadId is in request body
-      const body = await req.json().catch(() => ({}));
-      const bodyLeadId = body.leadId;
-      
-      if (!bodyLeadId) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Lead ID is required' }),
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-      
-      // Use leadId from body
-      console.log(`🔄 Processing lead ID from body: ${bodyLeadId}`);
-
-      // Get Salesforce access token
-      const token = await getSalesforceToken();
-
-      // Fetch lead data
-      const leadData = await getLeadData(token, bodyLeadId);
-
-      // Get document hub ID
-      const documentHubId = await getDocumentHubId(token, bodyLeadId);
-
-      // Get document status
-      const documents = await getDocumentStatus(token, documentHubId);
-
-      const response: SalesforceDataResponse = {
-        success: true,
-        data: {
-          leadData,
-          documentHubId,
-          documents,
-          accessToken: token.access_token,
-          instanceUrl: token.instance_url,
-        }
-      };
-
-      console.log('🎉 Salesforce data fetch completed successfully');
-
       return new Response(
-        JSON.stringify(response),
+        JSON.stringify({ success: false, error: 'Lead ID is required' }),
         { 
-          status: 200, 
+          status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
     }
-
-    console.log(`🔄 Processing lead ID: ${leadId}`);
+    
+    console.log(`🔄 Processing lead ID from body: ${leadId}`);
 
     // Get Salesforce access token
     const token = await getSalesforceToken();
