@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HomePage } from "./pages/HomePage";
 import { ContractPage } from "./pages/ContractPage";
-
+import AuthPage from "./pages/AuthPage";
 import { SignaturePage } from "./pages/SignaturePage";
 import { DocumentsPage } from "./pages/DocumentsPage";
 import { FinishPage } from "./pages/FinishPage";
@@ -21,6 +21,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          <Route path="/auth" element={<AuthPage />} />
           <Route path="/" element={<HomePage />} />
           <Route path="/:recordId" element={<HomePage />} />
           <Route path="/contract/:recordId" element={<ContractPage />} />

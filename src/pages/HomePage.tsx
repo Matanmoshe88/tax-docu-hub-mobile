@@ -2,15 +2,26 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FileText, LogIn, LogOut, User } from 'lucide-react';
 import { useSalesforceData } from '@/hooks/useSalesforceData';
+import { useAuth } from '@/hooks/useAuth';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { clientData, isLoading, recordId } = useSalesforceData();
+  const { user, signOut } = useAuth();
 
   const handleNext = () => {
     navigate(`/signature/${recordId || 'demo'}`);
+  };
+
+  const handleAuthAction = () => {
+    if (user) {
+      signOut();
+    } else {
+      navigate('/auth');
+    }
   };
 
   const contractText = `בין : קוויק טקס (שם רשום: "ג'י.אי.אמ גלובל")   ח"פ: 513218453      (להלן: "קוויקטקס" ו/או "החברה")
@@ -67,6 +78,31 @@ export const HomePage: React.FC = () => {
       nextLabel="אני מסכים להמשך"
     >
       <div className="space-y-6 animate-fade-in">
+        {/* Auth Section */}
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-muted-foreground">
+            {user ? `מחובר כ: ${user.email}` : 'לא מחובר'}
+          </div>
+          <Button
+            variant={user ? "outline" : "default"}
+            size="sm"
+            onClick={handleAuthAction}
+            className="gap-2"
+          >
+            {user ? (
+              <>
+                <LogOut className="h-4 w-4" />
+                התנתקות
+              </>
+            ) : (
+              <>
+                <LogIn className="h-4 w-4" />
+                התחברות
+              </>
+            )}
+          </Button>
+        </div>
+
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="flex justify-center">
