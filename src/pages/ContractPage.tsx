@@ -1,102 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FileText, User, Calendar } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-
-interface ClientData {
-  firstName: string;
-  lastName: string;
-  idNumber: string;
-  phone: string;
-  email: string;
-  address: string;
-  commissionRate: string;
-}
+import { useSalesforceData } from '@/hooks/useSalesforceData';
 
 export const ContractPage: React.FC = () => {
   const navigate = useNavigate();
-  const { leadId } = useParams();
   const { toast } = useToast();
-  const [clientData, setClientData] = useState<ClientData>({
-    firstName: "יוסי",
-    lastName: "כהן", 
-    idNumber: "123456789",
-    phone: "050-1234567",
-    email: "yossi.cohen@email.com",
-    address: "רחוב הרצל 1, תל אביב",
-    commissionRate: "25%"
-  });
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchSalesforceData = async () => {
-    if (!leadId || leadId === 'demo') {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      console.log('🔄 Fetching Salesforce data for lead:', leadId);
-      
-      const { data, error } = await supabase.functions.invoke('salesforce-data', {
-        body: { leadId },
-      });
-
-      if (error) {
-        console.error('❌ Supabase function error:', error);
-        toast({
-          title: "שגיאה",
-          description: "לא ניתן לטעון את נתוני הלקוח",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      if (!data?.success) {
-        console.error('❌ Salesforce data error:', data?.error);
-        toast({
-          title: "שגיאה",
-          description: data?.error || "לא ניתן לטעון את נתוני הלקוח",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      const { leadData } = data.data;
-      console.log('✅ Salesforce data loaded successfully');
-
-      // Update client data with real Salesforce data
-      const nameParts = leadData.Name ? leadData.Name.split(' ') : ['', ''];
-      setClientData({
-        firstName: nameParts[0] || '',
-        lastName: nameParts.slice(1).join(' ') || '',
-        idNumber: leadData.id__c || '',
-        phone: leadData.MobilePhone || '',
-        email: 'client@email.com',
-        address: leadData.fulladress__c || '',
-        commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : '25%'
-      });
-
-    } catch (error) {
-      console.error('💥 Error fetching Salesforce data:', error);
-      toast({
-        title: "שגיאה",
-        description: "לא ניתן לטעון את נתוני הלקוח",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSalesforceData();
-  }, [leadId]);
+  const { clientData, isLoading, recordId } = useSalesforceData();
 
   // Disable browser back button
   useEffect(() => {
@@ -119,7 +33,7 @@ export const ContractPage: React.FC = () => {
   }, [toast]);
 
   const handleNext = () => {
-    navigate(`/signature/${leadId}`);
+    navigate(`/signature/${recordId}`);
   };
 
   const handlePrevious = () => {
