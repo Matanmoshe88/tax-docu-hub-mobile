@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,6 +27,15 @@ interface Document {
   locked: boolean;
   file?: File;
   alternative?: string;
+  salesforceType: string; // Maps to DocumentType__c in Salesforce
+}
+
+interface DocumentsSingle {
+  Id: string;
+  DocumentType__c: string;
+  Status__c: string;
+  doc_url__c: string;
+  CreatedDate: string;
 }
 
 export const DocumentsPage: React.FC = () => {
@@ -43,7 +52,8 @@ export const DocumentsPage: React.FC = () => {
       required: true,
       uploaded: false,
       locked: false,
-      alternative: 'driver-license'
+      alternative: 'driver-license',
+      salesforceType: 'צילום תז קדימה'
     },
     {
       id: 'driver-license',
@@ -53,7 +63,8 @@ export const DocumentsPage: React.FC = () => {
       required: true,
       uploaded: false,
       locked: false,
-      alternative: 'id-card'
+      alternative: 'id-card',
+      salesforceType: 'צילום רישיון נהיגה'
     },
     {
       id: 'id-supplement',
@@ -62,7 +73,8 @@ export const DocumentsPage: React.FC = () => {
       icon: FileText,
       required: false,
       uploaded: false,
-      locked: false
+      locked: false,
+      salesforceType: 'ספח תז'
     },
     {
       id: 'bank-statement',
@@ -71,9 +83,43 @@ export const DocumentsPage: React.FC = () => {
       icon: FileText,
       required: true,
       uploaded: false,
-      locked: false
+      locked: false,
+      salesforceType: 'אישור ניהול חשבון'
     }
   ]);
+
+  // Load document status from session storage
+  useEffect(() => {
+    const documentsStatus = sessionStorage.getItem('documentsStatus');
+    if (documentsStatus) {
+      try {
+        const salesforceDocuments: DocumentsSingle[] = JSON.parse(documentsStatus);
+        console.log('📄 Loading document status from Salesforce:', salesforceDocuments);
+        
+        // Update document status based on Salesforce data
+        setDocuments(prev => prev.map(doc => {
+          // Find the latest document of this type from Salesforce
+          const salesforceDocs = salesforceDocuments
+            .filter(sf => sf.DocumentType__c === doc.salesforceType)
+            .sort((a, b) => new Date(b.CreatedDate).getTime() - new Date(a.CreatedDate).getTime());
+          
+          const latestDoc = salesforceDocs[0];
+          
+          if (latestDoc && latestDoc.Status__c === 'הושלם') {
+            return {
+              ...doc,
+              uploaded: true,
+              locked: true
+            };
+          }
+          
+          return doc;
+        }));
+      } catch (error) {
+        console.error('Error parsing documents status:', error);
+      }
+    }
+  }, []);
 
   const hasIdentityDocument = documents.some(doc => 
     (doc.id === 'id-card' || doc.id === 'driver-license') && doc.uploaded

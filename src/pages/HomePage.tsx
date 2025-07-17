@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface ClientData {
   firstName: string;
@@ -12,6 +14,12 @@ interface ClientData {
   email: string;
   address: string;
   commissionRate: string;
+}
+
+interface SalesforceSession {
+  accessToken: string;
+  instanceUrl: string;
+  documentHubId: string;
 }
 
 export const HomePage: React.FC = () => {
@@ -26,10 +34,82 @@ export const HomePage: React.FC = () => {
     address: "רחוב הרצל 1, תל אביב",
     commissionRate: "25%"
   });
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchSalesforceData = async () => {
+    if (!leadId || leadId === 'demo') {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      console.log('🔄 Fetching Salesforce data for lead:', leadId);
+      
+      const { data, error } = await supabase.functions.invoke('salesforce-data', {
+        body: { leadId },
+      });
+
+      if (error) {
+        console.error('❌ Supabase function error:', error);
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן לטעון את נתוני הלקוח",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data?.success) {
+        console.error('❌ Salesforce data error:', data?.error);
+        toast({
+          title: "שגיאה",
+          description: data?.error || "לא ניתן לטעון את נתוני הלקוח",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const { leadData, documentHubId, documents, accessToken, instanceUrl } = data.data;
+      console.log('✅ Salesforce data loaded successfully');
+
+      // Update client data with real Salesforce data
+      const nameParts = leadData.Name ? leadData.Name.split(' ') : ['', ''];
+      setClientData({
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' ') || '',
+        idNumber: leadData.id__c || '',
+        phone: leadData.MobilePhone || '',
+        email: 'client@email.com', // Email not provided in mapping
+        address: leadData.fulladress__c || '',
+        commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : '25%'
+      });
+
+      // Store Salesforce session data
+      const sessionData: SalesforceSession = {
+        accessToken,
+        instanceUrl,
+        documentHubId
+      };
+      sessionStorage.setItem('salesforceSession', JSON.stringify(sessionData));
+      sessionStorage.setItem('leadData', JSON.stringify(leadData));
+      sessionStorage.setItem('documentsStatus', JSON.stringify(documents));
+
+    } catch (error) {
+      console.error('💥 Error fetching Salesforce data:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לטעון את נתוני הלקוח",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // TODO: Fetch client data from Salesforce based on leadId
-    console.log('Loading client data for lead:', leadId);
+    fetchSalesforceData();
   }, [leadId]);
 
   const handleNext = () => {
@@ -65,6 +145,22 @@ export const HomePage: React.FC = () => {
 18. תנאי תשלום: הלקוח מתחייב לשלם לחברה עמלה בגובה של ${clientData.commissionRate} מסכום ההחזר בתוספת מע"מ (להלן: "עמלה") וזאת רק לאחר קבלת הכסף לחשבון הבנק של הלקוח.
 
 [... המשך תנאי החוזה עד סוף המסמך...]`;
+
+  if (isLoading) {
+    return (
+      <PortalLayout
+        currentStep={1}
+        totalSteps={4}
+        nextLabel="טוען..."
+        onNext={() => {}}
+      >
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">טוען נתוני לקוח...</p>
+        </div>
+      </PortalLayout>
+    );
+  }
 
   return (
     <PortalLayout
