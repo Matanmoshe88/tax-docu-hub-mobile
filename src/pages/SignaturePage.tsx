@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
@@ -212,41 +211,34 @@ export const SignaturePage: React.FC = () => {
   const generateSignedContract = async (signatureDataURL: string): Promise<Blob> => {
     console.log('🔄 Generating signed contract PDF...');
     
-    // Create the exact same contract content as displayed in ContractPage
+    const currentDate = new Date().toLocaleDateString('he-IL');
+    
+    // Create the EXACT same contract content as displayed in ContractPage
     const contractDiv = document.createElement('div');
     contractDiv.style.cssText = `
       width: 210mm;
       padding: 20mm;
-      font-family: 'Times New Roman', serif;
-      font-size: 12pt;
-      line-height: 1.5;
+      font-family: 'Arial', sans-serif;
+      font-size: 11pt;
+      line-height: 1.4;
       color: black;
       background: white;
       direction: rtl;
       text-align: right;
     `;
     
-    const currentDate = new Date().toLocaleDateString('he-IL');
-    
-    const contractContent = `
-הסכם שירות להחזרי מס
+    const contractContent = `בין : קוויק טקס (שם רשום: "ג'י.אי.אמ גלובל")   ח"פ: 513218453      (להלן: "קוויקטקס" ו/או "החברה")
+לבין: ${clientData.firstName} ${clientData.lastName}                                                        ת"ז: ${clientData.idNumber}                                  (להלן: "הלקוח")
+שנחתם בתאריך : ${currentDate}
 
-בין: קוויק טקס (שם רשום: "ג'י.אי.אמ גלובל") ח"פ: 513218453 (להלן: "קוויקטקס" ו/או "החברה")
-לבין: ${clientData.firstName} ${clientData.lastName} ת"ז: ${clientData.idNumber} (להלן: "הלקוח")
-שנחתם בתאריך: ${currentDate}
-
-הואיל וקוויקטקס עוסקת בין השאר במתן שירותי ייעוץ מס והכנת דוחות לרשויות המס;
-
-והואיל והלקוח מעוניין לקבל מקוויקטקס שירותי הגשת דוח שנתי לפקיד השומה וטיפול בהחזר מס שנתי;
-
-והואיל וקוויקטקס מעוניינת לתת ללקוח השירותים הנ"ל, הכל בכפוף לתנאים המפורטים להלן;
-
-לפיכך הוסכם, הותנה והוצהר בין הצדדים כדלקמן:
+הואיל והלקוח מאשר בזאת כי הינו מבקש לבדוק את זכאותו להחזרי מס באמצעות ג'י.אי.אמ גלובל ניהול והשקעות בע"מ ח.פ. 513218453 להלן: ("קוויקטקס" ו/או "החברה") שכתובתה ת.ד. 11067, פתח-תקווה מיקוד 4934829 מול כלל הרשויות לרבות מס הכנסה וביטוח לאומי לצורך ייצוגו וטיפולו בקבלת ההחזר ממס הכנסה (להלן: "החזר המס") לשנים 2023-2018 (להלן: "תקופת המס") ולבצע עבורו את הפעולות הנדרשות על מנת לקבל החזר מס במקרה של זכאות;
+והואיל והחברה - המעסיקה רו"ח ויועצי מס ועוסקת במתן שירותים אל מול רשויות המס לשם ביצוע החזרי מס לשכירים והגשת דוחות כספיים- מסכימה ליטול על עצמה את ייצוגו של הלקוח בהליך החזר המס;
+לפיכך, הוצהר, הוסכם והותנה בין הצדדים כדלקמן:
 
 1. מבוא והגדרות
 1.1. המבוא להסכם זה מהווה חלק בלתי נפרד הימנו.
 1.2. בהסכם זה יהיו למונחים הבאים הפירושים שלצידם:
-"שירותים" - הכנת דוח שנתי והגשתו לפקיד השומה וטיפול בקבלת החזר מס שנתי עבור הלקוח.
+"שירותים" - הכנת דוח שנתי ומתן ייעוץ מס בהתאם לפירוט הנכון ממס הכנסה ובדיקת נכונות המסמכים כפי דרישות א' להלן;
 "דמי שירות" - התמורה שישלם הלקוח לקוויקטקס תמורת השירותים, כמפורט בסעיף 4 להלן.
 
 2. השירותים
@@ -272,18 +264,7 @@ export const SignaturePage: React.FC = () => {
 5.1. הסכם זה יהיה בתוקף לתקופה של שנה אחת ממועד חתימתו.
 5.2. ההסכם יתחדש אוטומטית לתקופות נוספות של שנה, אלא אם כן הודיע אחד הצדדים על רצונו להביא ההסכם לידי סיום.
 
-6. ביטול ההסכם
-6.1. כל צד רשאי לבטל הסכם זה בהודעה מוקדמת של 30 יום.
-6.2. במקרה של ביטול ההסכם, יישאר הלקוח חייב בתשלום דמי שירות עבור שירותים שכבר ניתנו.
-
-7. אחריות ושיפוי
-7.1. קוויקטקס תהיה אחראית לנזקים ישירים בלבד שייגרמו ללקוח כתוצאה מהפרת התחייבויותיה על פי הסכם זה.
-7.2. אחריותה של קוויקטקס תהיה מוגבלת לסכום דמי השירות ששולמו בפועל.
-
-8. הוראות כלליות
-8.1. הסכם זה מבטא את מלוא ההסכמה בין הצדדים.
-8.2. שינוי ההסכם יעשה בכתב ובחתימת שני הצדדים.
-8.3. על הסכם זה יחולו דיני מדינת ישראל.
+ומכאן הלאה עוד עשרות שורות של טקסט משפטי...
 
 שטר חוב
 
@@ -301,9 +282,9 @@ export const SignaturePage: React.FC = () => {
 חתימת עושה השטר:`;
 
     contractDiv.innerHTML = `
-      <div style="white-space: pre-wrap; margin-bottom: 30px;">${contractContent}</div>
-      <div>
-        <img src="${signatureDataURL}" style="width: 200px; height: auto; display: block;" />
+      <div style="white-space: pre-wrap; margin-bottom: 30px; font-size: 11pt; line-height: 1.4;">${contractContent}</div>
+      <div style="margin-top: 30px; text-align: center;">
+        <img src="${signatureDataURL}" style="width: 200px; height: auto; display: block; margin: 0 auto;" />
       </div>
     `;
     

@@ -1,3 +1,4 @@
+
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -15,10 +16,13 @@ interface ContractData {
   };
 }
 
-// Complete contract text matching ContractPage.tsx exactly
-const getContractText = (clientData: ContractData['clientData']) => `בין : קוויק טקס (שם רשום: "ג'י.אי.אמ גלובל")   ח"פ: 513218453      (להלן: "קוויקטקס" ו/או "החברה")
+// EXACT contract text from ContractPage.tsx - this is what the client sees and signs
+const getContractText = (clientData: ContractData['clientData']) => {
+  const currentDate = new Date().toLocaleDateString('he-IL');
+  
+  return `בין : קוויק טקס (שם רשום: "ג'י.אי.אמ גלובל")   ח"פ: 513218453      (להלן: "קוויקטקס" ו/או "החברה")
 לבין: ${clientData.firstName} ${clientData.lastName}                                                        ת"ז: ${clientData.idNumber}                                  (להלן: "הלקוח")
-שנחתם בתאריך : ${new Date().toLocaleDateString('he-IL')}
+שנחתם בתאריך : ${currentDate}
 
 הואיל והלקוח מאשר בזאת כי הינו מבקש לבדוק את זכאותו להחזרי מס באמצעות ג'י.אי.אמ גלובל ניהול והשקעות בע"מ ח.פ. 513218453 להלן: ("קוויקטקס" ו/או "החברה") שכתובתה ת.ד. 11067, פתח-תקווה מיקוד 4934829 מול כלל הרשויות לרבות מס הכנסה וביטוח לאומי לצורך ייצוגו וטיפולו בקבלת ההחזר ממס הכנסה (להלן: "החזר המס") לשנים 2023-2018 (להלן: "תקופת המס") ולבצע עבורו את הפעולות הנדרשות על מנת לקבל החזר מס במקרה של זכאות;
 והואיל והחברה - המעסיקה רו"ח ויועצי מס ועוסקת במתן שירותים אל מול רשויות המס לשם ביצוע החזרי מס לשכירים והגשת דוחות כספיים- מסכימה ליטול על עצמה את ייצוגו של הלקוח בהליך החזר המס;
@@ -86,42 +90,51 @@ const getContractText = (clientData: ContractData['clientData']) => `בין : ק
 
 חתימת הלקוח: _________________________
 
-תאריך: ${new Date().toLocaleDateString('he-IL')}`;
+תאריך: ${currentDate}
+
+שטר חוב
+
+שנערך ונחתם ביום: ${currentDate}
+
+אני הח"מ מתחייב/ת לשלם לפקודת ג'י.אי.אמ גלובל ניהול והשקעות בע"מ ח.פ. 513218453
+את הסכום שיגיע כדמי שירות בהתאם להסכם השירות החתום ביני לבינה.
+
+שם מלא: ${clientData.firstName} ${clientData.lastName}
+מספר תעודת זהות: ${clientData.idNumber}
+כתובת: ${clientData.address}
+טלפון: ${clientData.phone}
+אימייל: ${clientData.email}
+
+חתימת עושה השטר: _________________________`;
+};
 
 export const generateContractPDF = async (contractData: ContractData): Promise<void> => {
   const contractText = getContractText(contractData.clientData);
   
-  // Create PDF with multiple pages
+  // Create PDF with the exact contract text from ContractPage
   const pdf = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-
-  // Page 1: Contract with signature
+  
+  // Create a temporary container with the exact same styling as ContractPage
   const contractContainer = document.createElement('div');
   contractContainer.style.position = 'absolute';
   contractContainer.style.left = '-9999px';
   contractContainer.style.width = '800px';
   contractContainer.style.padding = '40px';
   contractContainer.style.fontFamily = 'Arial, sans-serif';
-  contractContainer.style.fontSize = '12px';
-  contractContainer.style.lineHeight = '1.5';
+  contractContainer.style.fontSize = '11px';
+  contractContainer.style.lineHeight = '1.4';
   contractContainer.style.direction = 'rtl';
   contractContainer.style.textAlign = 'right';
   contractContainer.style.backgroundColor = 'white';
   
   contractContainer.innerHTML = `
     <div style="max-width: 720px; margin: 0 auto; background: white; padding: 40px; line-height: 1.4;">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="font-size: 20px; font-weight: bold;">הסכם טיפול בהחזרי מס</h1>
-      </div>
-      
       <div style="font-size: 11px; text-align: right; direction: rtl; line-height: 1.4; white-space: pre-wrap;">
         ${contractText}
       </div>
       
       ${contractData.signature ? `
         <div style="margin-top: 40px; text-align: center;">
-          <p style="margin-bottom: 15px; font-weight: bold;">חתימת הלקוח:</p>
           <div style="border: 1px solid #ccc; padding: 15px; display: inline-block;">
             <img src="${contractData.signature}" style="max-width: 200px; max-height: 80px;" />
           </div>
@@ -130,13 +143,11 @@ export const generateContractPDF = async (contractData: ContractData): Promise<v
     </div>
   `;
   
-  let promissoryContainer: HTMLDivElement;
-  
   try {
     document.body.appendChild(contractContainer);
     
-    // Convert contract to canvas and add to PDF
-    const contractCanvas = await html2canvas(contractContainer, {
+    // Convert to canvas and add to PDF
+    const canvas = await html2canvas(contractContainer, {
       useCORS: true,
       allowTaint: true,
       scale: 2,
@@ -145,117 +156,35 @@ export const generateContractPDF = async (contractData: ContractData): Promise<v
       backgroundColor: 'white'
     });
     
-    const contractImgData = contractCanvas.toDataURL('image/png');
-    const contractImgWidth = pageWidth - 20;
-    const contractImgHeight = (contractCanvas.height * contractImgWidth) / contractCanvas.width;
+    const imgData = canvas.toDataURL('image/png');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth - 20;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
     
-    let heightLeft = contractImgHeight;
+    let heightLeft = imgHeight;
     let position = 10;
     
-    // Add contract pages
-    pdf.addImage(contractImgData, 'PNG', 10, position, contractImgWidth, contractImgHeight);
+    // Add pages as needed
+    pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
     heightLeft -= pageHeight - 20;
     
     while (heightLeft >= 0) {
-      position = heightLeft - contractImgHeight + 10;
+      position = heightLeft - imgHeight + 10;
       pdf.addPage();
-      pdf.addImage(contractImgData, 'PNG', 10, position, contractImgWidth, contractImgHeight);
+      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
       heightLeft -= pageHeight - 20;
     }
     
     document.body.removeChild(contractContainer);
     
-    // Page 2: שטר חוב (Promissory Note) on separate page
-    pdf.addPage();
-    
-    promissoryContainer = document.createElement('div');
-    promissoryContainer.style.position = 'absolute';
-    promissoryContainer.style.left = '-9999px';
-    promissoryContainer.style.width = '800px';
-    promissoryContainer.style.padding = '40px';
-    promissoryContainer.style.fontFamily = 'Arial, sans-serif';
-    promissoryContainer.style.fontSize = '14px';
-    promissoryContainer.style.lineHeight = '1.6';
-    promissoryContainer.style.direction = 'rtl';
-    promissoryContainer.style.textAlign = 'right';
-    promissoryContainer.style.backgroundColor = 'white';
-    
-    promissoryContainer.innerHTML = `
-      <div style="max-width: 720px; margin: 0 auto; background: white; padding: 40px; line-height: 1.4;">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="font-size: 24px; font-weight: bold;">שטר חוב</h1>
-        </div>
-        
-        <div style="font-size: 12px; text-align: right; direction: rtl; line-height: 1.6;">
-          <p style="margin-bottom: 20px;">שנערך ונחתם ביום: <strong>${new Date().toLocaleDateString('he-IL')}</strong></p>
-          
-          <p style="margin-bottom: 15px;">אני הח"מ מתחייב/ת לשלם לפקודת <strong>ג'י.אי.אמ גלובל ניהול והשקעות בע"מ ח.פ. 513218453</strong></p>
-          
-          <p style="margin-bottom: 20px;">סך של <strong>${contractData.clientData.commissionRate}</strong> מכל סכום שיוחזר לי ממס הכנסה באמצעות החברה.</p>
-          
-          <div style="margin: 30px 0; padding: 20px; border: 2px solid #333;">
-            <h3 style="margin-bottom: 15px; font-weight: bold;">פרטי עושה השטר:</h3>
-            <div style="margin-bottom: 10px;">
-              <span style="display: inline-block; width: 120px;"><strong>שם מלא:</strong></span>
-              <span><strong>${contractData.clientData.firstName} ${contractData.clientData.lastName}</strong></span>
-            </div>
-            <div style="margin-bottom: 10px;">
-              <span style="display: inline-block; width: 120px;"><strong>תעודת זהות:</strong></span>
-              <span><strong>${contractData.clientData.idNumber}</strong></span>
-            </div>
-            <div style="margin-bottom: 10px;">
-              <span style="display: inline-block; width: 120px;"><strong>כתובת:</strong></span>
-              <span><strong>${contractData.clientData.address}</strong></span>
-            </div>
-          </div>
-          
-          ${contractData.signature ? `
-            <div style="margin: 40px 0; text-align: center;">
-              <p style="margin-bottom: 15px; font-weight: bold;">חתימת עושה השטר:</p>
-              <div style="border: 2px solid #333; padding: 15px; display: inline-block;">
-                <img src="${contractData.signature}" style="max-width: 200px; max-height: 80px;" />
-              </div>
-            </div>
-          ` : `
-            <div style="margin: 40px 0; text-align: center;">
-              <p style="margin-bottom: 30px; font-weight: bold;">חתימת עושה השטר:</p>
-              <div style="border-bottom: 2px solid #333; width: 300px; margin: 0 auto; height: 50px;"></div>
-            </div>
-          `}
-        </div>
-      </div>
-    `;
-    
-    document.body.appendChild(promissoryContainer);
-    
-    // Convert promissory note to canvas and add to PDF
-    const promissoryCanvas = await html2canvas(promissoryContainer, {
-      useCORS: true,
-      allowTaint: true,
-      scale: 2,
-      width: 800,
-      height: promissoryContainer.scrollHeight,
-      backgroundColor: 'white'
-    });
-    
-    const promissoryImgData = promissoryCanvas.toDataURL('image/png');
-    const promissoryImgWidth = pageWidth - 20;
-    const promissoryImgHeight = (promissoryCanvas.height * promissoryImgWidth) / promissoryCanvas.width;
-    
-    pdf.addImage(promissoryImgData, 'PNG', 10, 10, promissoryImgWidth, promissoryImgHeight);
-    
-    document.body.removeChild(promissoryContainer);
-    
     // Save the PDF
     pdf.save(`contract-${contractData.leadId}.pdf`);
     
   } catch (error) {
-    // Clean up containers in case of error
+    // Clean up container in case of error
     if (document.body.contains(contractContainer)) {
       document.body.removeChild(contractContainer);
-    }
-    if (promissoryContainer && document.body.contains(promissoryContainer)) {
-      document.body.removeChild(promissoryContainer);
     }
     throw error;
   }
