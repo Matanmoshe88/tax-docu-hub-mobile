@@ -50,14 +50,23 @@ export const useSalesforceData = () => {
     const salesforceSession = sessionStorage.getItem('salesforceSession');
     const leadData = sessionStorage.getItem('leadData');
     const documentsStatus = sessionStorage.getItem('documentsStatus');
+    const storedRecordId = sessionStorage.getItem('currentRecordId');
+
+    // If record ID has changed, fetch fresh data
+    if (storedRecordId !== recordId) {
+      console.log(`🔄 Record ID changed from ${storedRecordId} to ${recordId}, fetching fresh data`);
+      return true;
+    }
 
     if (!salesforceSession || !leadData || !documentsStatus) {
+      console.log('🔄 Missing session data, fetching fresh data');
       return true; // Missing data, need to fetch
     }
 
     try {
       const sessionData: SalesforceSession = JSON.parse(salesforceSession);
       if (!sessionData.timestamp || isSessionExpired(sessionData.timestamp)) {
+        console.log('🔄 Session expired, fetching fresh data');
         return true; // Session expired, need to refresh
       }
     } catch (error) {
@@ -65,6 +74,7 @@ export const useSalesforceData = () => {
       return true; // Invalid session data, need to fetch
     }
 
+    console.log('✅ Using cached session data');
     return false; // Data exists and is fresh
   };
 
@@ -134,6 +144,7 @@ export const useSalesforceData = () => {
       sessionStorage.setItem('leadData', JSON.stringify(leadData));
       sessionStorage.setItem('documentsStatus', JSON.stringify(documents));
       sessionStorage.setItem('clientData', JSON.stringify(updatedClientData));
+      sessionStorage.setItem('currentRecordId', recordId || ''); // Store current record ID
 
       setIsDataFresh(true);
 
