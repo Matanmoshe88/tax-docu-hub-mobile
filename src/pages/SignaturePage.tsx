@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PenTool, RotateCcw, Check } from 'lucide-react';
+import { PenTool, RotateCcw, Check, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export const SignaturePage: React.FC = () => {
   const navigate = useNavigate();
@@ -108,6 +109,51 @@ export const SignaturePage: React.FC = () => {
     setHasSignature(false);
   };
 
+  const uploadSignatureToStorage = async (signatureBlob: Blob): Promise<string> => {
+    console.log('🔄 Uploading signature to Supabase storage...');
+    
+    const fileName = `signature-${leadId}-${Date.now()}.png`;
+    
+    const { data, error } = await supabase.storage
+      .from('signatures')
+      .upload(fileName, signatureBlob, {
+        contentType: 'image/png',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('❌ Storage upload error:', error);
+      throw new Error(`Failed to upload signature: ${error.message}`);
+    }
+
+    // Get the public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('signatures')
+      .getPublicUrl(fileName);
+
+    console.log('✅ Signature uploaded successfully:', publicUrl);
+    return publicUrl;
+  };
+
+  const callSalesforceIntegration = async (signatureUrl: string) => {
+    console.log('🔄 Calling Salesforce integration...');
+    
+    const { data, error } = await supabase.functions.invoke('salesforce-integration', {
+      body: {
+        leadId,
+        signatureUrl
+      }
+    });
+
+    if (error) {
+      console.error('❌ Salesforce integration error:', error);
+      throw new Error(`Salesforce integration failed: ${error.message}`);
+    }
+
+    console.log('✅ Salesforce integration successful:', data);
+    return data;
+  };
+
   const handleNext = async () => {
     if (!hasSignature) {
       toast({
@@ -120,50 +166,75 @@ export const SignaturePage: React.FC = () => {
 
     // Check signature size
     const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-        let pixelCount = 0;
-        
-        for (let i = 0; i < data.length; i += 4) {
-          if (data[i + 3] > 0) pixelCount++;
-        }
-        
-        if (pixelCount < 100) {
-          toast({
-            title: "החתימה קטנה מדי",
-            description: "אנא חתום שוב בצורה ברורה יותר",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    let pixelCount = 0;
+    
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] > 0) pixelCount++;
+    }
+    
+    if (pixelCount < 100) {
+      toast({
+        title: "החתימה קטנה מדי",
+        description: "אנא חתום שוב בצורה ברורה יותר",
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsSubmitting(true);
     
     try {
-      if (canvas) {
-        const signatureDataURL = canvas.toDataURL();
-        localStorage.setItem(`signature-${leadId}`, signatureDataURL);
-        console.log('Signature saved:', signatureDataURL);
-        
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        setIsSigned(true);
-        toast({
-          title: "החתימה נשמרה בהצלחה",
-          description: "המעבר לשלב הבא - העלאת מסמכים",
-        });
-        
-        navigate(`/documents/${leadId}`);
-      }
+      console.log('🚀 Starting signature submission process...');
+      
+      // Convert canvas to blob
+      const signatureDataURL = canvas.toDataURL('image/png');
+      const response = await fetch(signatureDataURL);
+      const signatureBlob = await response.blob();
+      
+      // Save signature locally (for PDF generation)
+      localStorage.setItem(`signature-${leadId}`, signatureDataURL);
+      console.log('✅ Signature saved to localStorage');
+
+      // Upload signature to Supabase storage
+      toast({
+        title: "מעלה חתימה...",
+        description: "מעלה את החתימה לשירות האחסון",
+      });
+      
+      const signatureUrl = await uploadSignatureToStorage(signatureBlob);
+      console.log('✅ Signature uploaded to storage:', signatureUrl);
+
+      // Send to Salesforce
+      toast({
+        title: "שולח ל-Salesforce...",
+        description: "מעביר את החתימה למערכת הניהול",
+      });
+      
+      const salesforceResult = await callSalesforceIntegration(signatureUrl);
+      console.log('✅ Salesforce integration completed:', salesforceResult);
+      
+      setIsSigned(true);
+      toast({
+        title: "החתימה נשמרה בהצלחה! 🎉",
+        description: "החתימה נשלחה למערכת והמעבר לשלב הבא",
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      navigate(`/documents/${leadId}`);
+      
     } catch (error) {
+      console.error('💥 Signature submission error:', error);
+      
       toast({
         title: "שגיאה בשמירת החתימה",
-        description: "אנא נסה שוב",
+        description: error instanceof Error ? error.message : "אנא נסה שוב",
         variant: "destructive",
       });
     } finally {
