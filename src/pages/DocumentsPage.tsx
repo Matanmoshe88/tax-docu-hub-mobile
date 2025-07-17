@@ -11,9 +11,11 @@ import {
   FileText,
   Lock,
   Unlock,
-  Eye
+  Eye,
+  Download
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { generateContractPDF } from '@/lib/pdfGenerator';
 
 interface Document {
   id: string;
@@ -171,6 +173,42 @@ export const DocumentsPage: React.FC = () => {
     return;
   };
 
+  const handleDownloadPDF = async () => {
+    try {
+      // Get signature from localStorage (saved in SignaturePage)
+      const signature = localStorage.getItem(`signature-${leadId}`);
+      
+      // Sample contract data - in real app this would come from state/props
+      const contractData = {
+        leadId: leadId || '12345',
+        signature: signature || undefined,
+        loanAmount: 50000,
+        interestRate: 5.2,
+        repaymentPeriod: 36,
+        borrowerName: 'יוחנן כהן',
+        borrowerAddress: 'רחוב הרצל 123, תל אביב',
+        borrowerId: '123456789',
+        lenderName: 'חברת ההלוואות בע"מ',
+        lenderAddress: 'רחוב רוטשילד 456, תל אביב',
+        lenderId: '987654321',
+      };
+
+      await generateContractPDF(contractData);
+      
+      toast({
+        title: "PDF נוצר בהצלחה",
+        description: "הקובץ הורד למחשב שלך",
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "שגיאה ביצירת PDF",
+        description: "אנא נסה שוב",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <PortalLayout
       currentStep={3}
@@ -289,6 +327,26 @@ export const DocumentsPage: React.FC = () => {
                 <li>• ספח תז - רשות</li>
                 <li>• המידע יישמר בצורה מוצפנת ובטוחה</li>
               </ul>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* PDF Download */}
+        <Card className="border-success/20 bg-success/5 shadow-card">
+          <CardContent className="pt-6">
+            <div className="space-y-3">
+              <h3 className="font-semibold text-success">הורדת הסכם PDF</h3>
+              <p className="text-sm text-muted-foreground">
+                לחץ כדי להוריד את ההסכם הסופי עם החתימה בפורמט PDF
+              </p>
+              <Button
+                onClick={handleDownloadPDF}
+                className="w-full sm:w-auto"
+                variant="default"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                הורד הסכם PDF
+              </Button>
             </div>
           </CardContent>
         </Card>
