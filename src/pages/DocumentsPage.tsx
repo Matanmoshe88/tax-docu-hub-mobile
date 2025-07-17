@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { generateContractPDF } from '@/lib/pdfGenerator';
 import { supabase } from '@/integrations/supabase/client';
+import { useSalesforceData } from '@/hooks/useSalesforceData';
 
 interface Document {
   id: string;
@@ -43,7 +43,7 @@ interface DocumentsSingle {
 
 export const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { leadId } = useParams();
+  const { recordId } = useSalesforceData();
   const { toast } = useToast();
   
   const [documents, setDocuments] = useState<Document[]>([
@@ -141,7 +141,7 @@ export const DocumentsPage: React.FC = () => {
   const uploadDocumentToStorage = async (file: File, docId: string): Promise<string> => {
     console.log('🔄 Uploading document to Supabase storage...');
     
-    const fileName = `document-${docId}-${leadId}-${Date.now()}.${file.name.split('.').pop()}`;
+    const fileName = `document-${docId}-${recordId}-${Date.now()}.${file.name.split('.').pop()}`;
     
     const { data, error } = await supabase.storage
       .from('signatures')
@@ -169,7 +169,7 @@ export const DocumentsPage: React.FC = () => {
     
     const { data, error } = await supabase.functions.invoke('salesforce-integration', {
       body: {
-        leadId,
+        leadId: recordId,
         signatureUrl: documentUrl,
         documentType,
         documentName
@@ -296,7 +296,7 @@ export const DocumentsPage: React.FC = () => {
       return;
     }
 
-    navigate(`/finish/${leadId}`);
+    navigate(`/finish/${recordId}`);
   };
 
   const handlePrevious = () => {
@@ -307,10 +307,10 @@ export const DocumentsPage: React.FC = () => {
   const handleDownloadPDF = async () => {
     try {
       // Get signature from localStorage (saved in SignaturePage)
-      const signature = localStorage.getItem(`signature-${leadId}`);
+      const signature = localStorage.getItem(`signature-${recordId}`);
       
       // Get client data from localStorage or use defaults
-      const storedClientData = localStorage.getItem(`clientData-${leadId}`);
+      const storedClientData = localStorage.getItem(`clientData-${recordId}`);
       const clientData = storedClientData ? JSON.parse(storedClientData) : {
         firstName: 'יוסי',
         lastName: 'כהן',
@@ -322,7 +322,7 @@ export const DocumentsPage: React.FC = () => {
       };
 
       const contractData = {
-        leadId: leadId || '12345',
+        leadId: recordId || '12345',
         signature: signature || undefined,
         clientData,
       };

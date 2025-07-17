@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,10 +13,11 @@ import {
   Download,
   Home
 } from 'lucide-react';
+import { useSalesforceData } from '@/hooks/useSalesforceData';
 
 export const FinishPage: React.FC = () => {
   const navigate = useNavigate();
-  const { leadId } = useParams();
+  const { recordId } = useSalesforceData();
 
   const nextSteps = [
     {
@@ -51,7 +52,7 @@ export const FinishPage: React.FC = () => {
 
   const handleDownloadSummary = () => {
     // TODO: Generate and download PDF summary
-    console.log('Downloading summary for lead:', leadId);
+    console.log('Downloading summary for record:', recordId);
   };
 
   return (
@@ -76,7 +77,7 @@ export const FinishPage: React.FC = () => {
           </div>
           <div className="flex justify-center">
             <Badge variant="secondary" className="text-lg px-4 py-2">
-              מספר תיק: {leadId?.slice(-8).toUpperCase()}
+              מספר תיק: {recordId?.slice(-8).toUpperCase()}
             </Badge>
           </div>
         </div>

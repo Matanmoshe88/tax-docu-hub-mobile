@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,58 +8,17 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-
-interface ClientData {
-  firstName: string;
-  lastName: string;
-  idNumber: string;
-  phone: string;
-  email: string;
-  address: string;
-  commissionRate: string;
-}
+import { useSalesforceData } from '@/hooks/useSalesforceData';
 
 export const SignaturePage: React.FC = () => {
   const navigate = useNavigate();
-  const { leadId } = useParams();
+  const { clientData, recordId } = useSalesforceData();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSigned, setIsSigned] = useState(false);
   const { toast } = useToast();
-  
-  // Client data from Salesforce
-  const [clientData, setClientData] = useState<ClientData>({
-    firstName: "יוסי",
-    lastName: "כהן", 
-    idNumber: "123456789",
-    phone: "050-1234567",
-    email: "yossi.cohen@email.com",
-    address: "רחוב הרצל 1, תל אביב",
-    commissionRate: "25%"
-  });
-
-  // Load client data from session storage
-  useEffect(() => {
-    const storedClientData = sessionStorage.getItem('clientData');
-    if (storedClientData) {
-      try {
-        const data = JSON.parse(storedClientData);
-        setClientData({
-          firstName: data.FirstName || "יוסי",
-          lastName: data.LastName || "כהן",
-          idNumber: data.Id_Number__c || "123456789",
-          phone: data.Phone || "050-1234567",
-          email: data.Email || "yossi.cohen@email.com",
-          address: `${data.Street || "רחוב הרצל 1"}, ${data.City || "תל אביב"}`,
-          commissionRate: data.Commission_Rate__c ? `${data.Commission_Rate__c}%` : "25%"
-        });
-      } catch (error) {
-        console.error('Error parsing client data:', error);
-      }
-    }
-  }, []);
 
   // Disable browser back button completely
   useEffect(() => {
@@ -164,7 +123,7 @@ export const SignaturePage: React.FC = () => {
   const uploadSignatureToStorage = async (signatureBlob: Blob): Promise<string> => {
     console.log('🔄 Uploading signature to Supabase storage...');
     
-    const fileName = `signature-${leadId}-${Date.now()}.png`;
+    const fileName = `signature-${recordId}-${Date.now()}.png`;
     
     const { data, error } = await supabase.storage
       .from('signatures')
@@ -192,7 +151,7 @@ export const SignaturePage: React.FC = () => {
     
     const { data, error } = await supabase.functions.invoke('salesforce-integration', {
       body: {
-        leadId,
+        leadId: recordId,
         signatureUrl,
         documentType,
         documentName
@@ -368,8 +327,8 @@ export const SignaturePage: React.FC = () => {
       const signatureBlob = await response.blob();
       
       // Save signature locally (for PDF generation)
-      localStorage.setItem(`signature-${leadId}`, signatureDataURL);
-      localStorage.setItem(`clientData-${leadId}`, JSON.stringify(clientData));
+      localStorage.setItem(`signature-${recordId}`, signatureDataURL);
+      localStorage.setItem(`clientData-${recordId}`, JSON.stringify(clientData));
       console.log('✅ Signature saved to localStorage');
 
       // Upload signature to Supabase storage
@@ -390,7 +349,7 @@ export const SignaturePage: React.FC = () => {
       const contractBlob = await generateSignedContract(signatureDataURL);
       
       // Upload contract to storage
-      const contractFileName = `contract-${leadId}-${Date.now()}.pdf`;
+      const contractFileName = `contract-${recordId}-${Date.now()}.pdf`;
       const { data: contractData, error: contractError } = await supabase.storage
         .from('signatures')
         .upload(contractFileName, contractBlob, {
@@ -426,7 +385,7 @@ export const SignaturePage: React.FC = () => {
       });
       
       await new Promise(resolve => setTimeout(resolve, 1000));
-      navigate(`/documents/${leadId}`);
+      navigate(`/documents/${recordId}`);
       
     } catch (error) {
       console.error('💥 Signature submission error:', error);
@@ -442,7 +401,7 @@ export const SignaturePage: React.FC = () => {
   };
 
   const handlePrevious = () => {
-    navigate(`/contract/${leadId}`);
+    navigate(`/contract/${recordId}`);
   };
 
   return (
