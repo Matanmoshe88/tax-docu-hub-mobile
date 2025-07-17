@@ -79,6 +79,14 @@ export const useSalesforceData = () => {
   };
 
   const fetchSalesforceData = async () => {
+    // Force fresh data fetch for this record
+    console.log('🔄 Forcing fresh data fetch - clearing session storage');
+    sessionStorage.removeItem('salesforceSession');
+    sessionStorage.removeItem('leadData');
+    sessionStorage.removeItem('documentsStatus');
+    sessionStorage.removeItem('clientData');
+    sessionStorage.removeItem('currentRecordId');
+    
     if (!shouldFetchData()) {
       setIsLoading(false);
       loadDataFromSession();
