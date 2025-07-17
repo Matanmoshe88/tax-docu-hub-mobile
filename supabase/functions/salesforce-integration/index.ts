@@ -16,6 +16,8 @@ interface SalesforceTokenResponse {
 interface DocumentUploadRequest {
   leadId: string;
   signatureUrl: string;
+  documentType?: string;
+  documentName?: string;
 }
 
 async function getSalesforceToken(): Promise<SalesforceTokenResponse> {
@@ -85,16 +87,18 @@ async function uploadDocumentToSalesforce(
   token: SalesforceTokenResponse,
   leadId: string,
   signatureUrl: string,
-  hubId: string
+  hubId: string,
+  documentType: string = "חתימה",
+  documentName: string = "חתימה"
 ): Promise<any> {
   console.log(`🔄 Uploading document to Salesforce for lead: ${leadId}`);
   
   const salesforceUrl = `${token.instance_url}/services/data/v60.0/sobjects/DocumentsSingles__c/`;
   
   const documentData = {
-    Name: "חתימה",
+    Name: documentName,
     Lead__c: leadId,
-    DocumentType__c: "חתימה",
+    DocumentType__c: documentType,
     doc_url__c: signatureUrl,
     DocumentManager__c: hubId
   };
@@ -140,7 +144,7 @@ serve(async (req) => {
     const body = await req.json() as DocumentUploadRequest;
     console.log('📝 Request body:', JSON.stringify(body, null, 2));
 
-    const { leadId, signatureUrl } = body;
+    const { leadId, signatureUrl, documentType, documentName } = body;
 
     if (!leadId || !signatureUrl) {
       throw new Error('Missing required fields: leadId and signatureUrl');
@@ -163,7 +167,14 @@ serve(async (req) => {
     const hubId = await getDocumentHubId(token, leadId);
 
     // Step 3: Upload document to Salesforce
-    const uploadResult = await uploadDocumentToSalesforce(token, leadId, signatureUrl, hubId);
+    const uploadResult = await uploadDocumentToSalesforce(
+      token, 
+      leadId, 
+      signatureUrl, 
+      hubId, 
+      documentType, 
+      documentName
+    );
 
     const response = {
       success: true,

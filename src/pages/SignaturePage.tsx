@@ -6,6 +6,18 @@ import { Button } from '@/components/ui/button';
 import { PenTool, RotateCcw, Check, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+
+interface ClientData {
+  firstName: string;
+  lastName: string;
+  idNumber: string;
+  phone: string;
+  email: string;
+  address: string;
+  commissionRate: string;
+}
 
 export const SignaturePage: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +28,17 @@ export const SignaturePage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSigned, setIsSigned] = useState(false);
   const { toast } = useToast();
+  
+  // Client data - TODO: fetch from Salesforce
+  const [clientData] = useState<ClientData>({
+    firstName: "יוסי",
+    lastName: "כהן", 
+    idNumber: "123456789",
+    phone: "050-1234567",
+    email: "yossi.cohen@email.com",
+    address: "רחוב הרצל 1, תל אביב",
+    commissionRate: "25%"
+  });
 
   // Prevent phone back button navigation after signing
   useEffect(() => {
@@ -135,13 +158,15 @@ export const SignaturePage: React.FC = () => {
     return publicUrl;
   };
 
-  const callSalesforceIntegration = async (signatureUrl: string) => {
+  const callSalesforceIntegration = async (signatureUrl: string, documentType?: string, documentName?: string) => {
     console.log('🔄 Calling Salesforce integration...');
     
     const { data, error } = await supabase.functions.invoke('salesforce-integration', {
       body: {
         leadId,
-        signatureUrl
+        signatureUrl,
+        documentType,
+        documentName
       }
     });
 
@@ -152,6 +177,82 @@ export const SignaturePage: React.FC = () => {
 
     console.log('✅ Salesforce integration successful:', data);
     return data;
+  };
+
+  const generateSignedContract = async (signatureDataURL: string): Promise<Blob> => {
+    console.log('🔄 Generating signed contract PDF...');
+    
+    // Create a virtual contract document with signature
+    const contractDiv = document.createElement('div');
+    contractDiv.style.cssText = `
+      width: 210mm;
+      padding: 20mm;
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.5;
+      color: black;
+      background: white;
+      direction: rtl;
+      text-align: right;
+    `;
+    
+    const contractText = `הסכם שירות להחזרי מס
+
+בין : קוויק טקס (שם רשום: "ג'י.אי.אמ גלובל")   ח"פ: 513218453      (להלן: "קוויקטקס" ו/או "החברה")
+לבין: ${clientData.firstName} ${clientData.lastName}                                          ת"ז: ${clientData.idNumber}                                    (להלן: "הלקוח")
+שנחתם בתאריך : ${new Date().toLocaleDateString('he-IL')}
+
+[כל תוכן ההסכם הקיים...]
+
+שטר חוב
+שנערך ונחתם ביום ${new Date().toLocaleDateString('he-IL')}
+אני הח"מ מתחייב/ת לשלם לפקודת ג'י.אי.אמ גלובל ניהול והשקעות בע"מ ח.פ. 513218453 
+
+שם מלא: ${clientData.firstName} ${clientData.lastName}     מספר תעודת זהות: ${clientData.idNumber}
+כתובת: ${clientData.address}
+
+חתימת עושה השטר:`;
+
+    contractDiv.innerHTML = `
+      <div style="white-space: pre-wrap;">${contractText}</div>
+      <div style="margin-top: 20px;">
+        <img src="${signatureDataURL}" style="width: 200px; height: auto; display: block;" />
+      </div>
+    `;
+    
+    document.body.appendChild(contractDiv);
+    
+    try {
+      const canvas = await html2canvas(contractDiv, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      return pdf.output('blob');
+    } finally {
+      document.body.removeChild(contractDiv);
+    }
   };
 
   const handleNext = async () => {
@@ -211,14 +312,43 @@ export const SignaturePage: React.FC = () => {
       const signatureUrl = await uploadSignatureToStorage(signatureBlob);
       console.log('✅ Signature uploaded to storage:', signatureUrl);
 
-      // Send to Salesforce
+      // Generate signed contract
+      toast({
+        title: "יוצר הסכם חתום...",
+        description: "מכין את ההסכם עם החתימה",
+      });
+      
+      const contractBlob = await generateSignedContract(signatureDataURL);
+      
+      // Upload contract to storage
+      const contractFileName = `contract-${leadId}-${Date.now()}.pdf`;
+      const { data: contractData, error: contractError } = await supabase.storage
+        .from('signatures')
+        .upload(contractFileName, contractBlob, {
+          contentType: 'application/pdf',
+          upsert: false
+        });
+
+      if (contractError) {
+        throw new Error(`Failed to upload contract: ${contractError.message}`);
+      }
+
+      const { data: { publicUrl: contractUrl } } = supabase.storage
+        .from('signatures')
+        .getPublicUrl(contractFileName);
+
+      // Send signature to Salesforce
       toast({
         title: "שולח ל-Salesforce...",
         description: "מעביר את החתימה למערכת הניהול",
       });
       
-      const salesforceResult = await callSalesforceIntegration(signatureUrl);
-      console.log('✅ Salesforce integration completed:', salesforceResult);
+      const salesforceResult = await callSalesforceIntegration(signatureUrl, "חתימה", "חתימה");
+      console.log('✅ Signature uploaded to Salesforce:', salesforceResult);
+
+      // Send contract to Salesforce
+      const contractResult = await callSalesforceIntegration(contractUrl, "הסכם התקשרות", "הסכם התקשרות");
+      console.log('✅ Contract uploaded to Salesforce:', contractResult);
       
       setIsSigned(true);
       toast({

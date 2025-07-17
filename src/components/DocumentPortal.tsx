@@ -27,9 +27,27 @@ interface Document {
 
 const documents: Document[] = [
   {
-    id: 'bank-statement',
-    title: 'Bank Statement',
-    description: 'Most recent 3 months of bank statements',
+    id: 'id-front',
+    title: 'צילום תז קדימה',
+    description: 'תעודת זהות - צד קדמי',
+    icon: IdCard,
+    required: true,
+    uploaded: false,
+    category: 'identity'
+  },
+  {
+    id: 'id-appendix',
+    title: 'ספח תז',
+    description: 'ספח לתעודת זהות',
+    icon: FileText,
+    required: true,
+    uploaded: false,
+    category: 'identity'
+  },
+  {
+    id: 'bank-account-confirmation',
+    title: 'אישור ניהול חשבון',
+    description: 'אישור מהבנק על ניהול חשבון',
     icon: CreditCard,
     required: true,
     uploaded: false,
@@ -37,48 +55,12 @@ const documents: Document[] = [
   },
   {
     id: 'drivers-license',
-    title: "Driver's License",
-    description: 'Front and back of your valid driver\'s license',
-    icon: IdCard,
-    required: true,
-    uploaded: true,
-    category: 'identity'
-  },
-  {
-    id: 'photo-id',
-    title: 'Photo ID',
-    description: 'Government-issued photo identification',
+    title: 'צילום רישיון נהיגה',
+    description: 'רישיון נהיגה תקף',
     icon: Camera,
     required: true,
     uploaded: false,
     category: 'identity'
-  },
-  {
-    id: 'w2-forms',
-    title: 'W-2 Forms',
-    description: 'All W-2 forms from employers for tax year',
-    icon: FileText,
-    required: true,
-    uploaded: false,
-    category: 'financial'
-  },
-  {
-    id: '1099-forms',
-    title: '1099 Forms',
-    description: 'All 1099 forms if applicable',
-    icon: FileText,
-    required: false,
-    uploaded: false,
-    category: 'financial'
-  },
-  {
-    id: 'business-license',
-    title: 'Business License',
-    description: 'Valid business license or registration',
-    icon: Shield,
-    required: false,
-    uploaded: false,
-    category: 'business'
   }
 ];
 
