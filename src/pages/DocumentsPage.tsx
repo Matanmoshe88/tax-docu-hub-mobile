@@ -124,8 +124,9 @@ export const DocumentsPage: React.FC = () => {
           
           if (latestDoc) {
             console.log(`  Latest doc for ${doc.id}:`, latestDoc);
-            if (latestDoc.Status__c === 'הושלם') {
-              console.log(`  ✅ Marking ${doc.id} as uploaded and locked`);
+            // Consider document uploaded if status is completed OR if it has a doc_url (indicating it was uploaded)
+            if (latestDoc.Status__c === 'הושלם' || (latestDoc.doc_url__c && latestDoc.doc_url__c !== null)) {
+              console.log(`  ✅ Marking ${doc.id} as uploaded and locked (Status: ${latestDoc.Status__c}, URL: ${latestDoc.doc_url__c})`);
               return {
                 ...doc,
                 uploaded: true,
