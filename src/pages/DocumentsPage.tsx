@@ -43,7 +43,7 @@ interface DocumentsSingle {
 
 export const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { recordId } = useSalesforceData();
+  const { clientData, isLoading, recordId } = useSalesforceData();
   const { toast } = useToast();
   
   const [documents, setDocuments] = useState<Document[]>([
