@@ -178,19 +178,19 @@ export const DocumentsPage: React.FC = () => {
       // Get signature from localStorage (saved in SignaturePage)
       const signature = localStorage.getItem(`signature-${leadId}`);
       
-      // Sample contract data - in real app this would come from state/props
+      // Use the real client data structure
       const contractData = {
         leadId: leadId || '12345',
         signature: signature || undefined,
-        loanAmount: 50000,
-        interestRate: 5.2,
-        repaymentPeriod: 36,
-        borrowerName: 'יוחנן כהן',
-        borrowerAddress: 'רחוב הרצל 123, תל אביב',
-        borrowerId: '123456789',
-        lenderName: 'חברת ההלוואות בע"מ',
-        lenderAddress: 'רחוב רוטשילד 456, תל אביב',
-        lenderId: '987654321',
+        clientData: {
+          firstName: 'יוסי',
+          lastName: 'כהן',
+          idNumber: '123456789',
+          phone: '050-1234567',
+          email: 'yossi.cohen@email.com',
+          address: 'רחוב הרצל 1, תל אביב',
+          commissionRate: '25%',
+        },
       };
 
       await generateContractPDF(contractData);
