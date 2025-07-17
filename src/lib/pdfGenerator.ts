@@ -15,7 +15,7 @@ interface ContractData {
   };
 }
 
-// Full contract text from ContractPage.tsx
+// Complete contract text matching ContractPage.tsx exactly
 const getContractText = (clientData: ContractData['clientData']) => `בין : קוויק טקס (שם רשום: "ג'י.אי.אמ גלובל")   ח"פ: 513218453      (להלן: "קוויקטקס" ו/או "החברה")
 לבין: ${clientData.firstName} ${clientData.lastName}                                                        ת"ז: ${clientData.idNumber}                                  (להלן: "הלקוח")
 שנחתם בתאריך : ${new Date().toLocaleDateString('he-IL')}
@@ -32,113 +32,231 @@ const getContractText = (clientData: ContractData['clientData']) => `בין : ק
 7. הלקוח מצהיר ומודע לכך כי אי שיתוף פעולה מצד הלקוח ואי מסירת המידע או מסירת מידע שאינו נכון ו/או עדכני ו/או מלא עלול לעכב את מתן השירות או לגרום לסירוב הבקשה וללקוח לא יהיה בגין עיכוב ו/או סירוב כאמור כל טענה ו/או דרישה ו/או תביעה כנגד החברה. יובהר כי החברה תגיש את הבקשה להחזר מס על סמך מידע שהתקבל מאת הלקוח כמו שהוא וכי לחברה אין אחריות ישירה ו/או שילוחית לנכונותו, כמו כן לחברה לא תהיה כל אחריות כלפי הלקוח, במישרין ו/או בעקיפין, בכל דרישה שהיא, בעבר, הווה ובעתיד, של רשויות המס והמוסד לביטוח לאומי מהלקוח, לרבות חבות מס ו/או שינויים בתקנות שיכולים להשפיע על אי קבלת ההחזר, סכום ההחזר ו/או מועד קבלתו.
 
 8. בעת מסירת פרטים אישיים, בהזמנת שירות או מוצר, מאשר הלקוח לחברה לפנות אליו בכל אמצעי תקשורת שתראה לנכון, בהצעות ומידע שיווקי ופרסומי (לרבות על פי סעיף 30א' לחוק התקשורת) הקשור לשירותי החברה ולמוצרים המשווקים באמצעותה. אם אין הלקוח מעוניין בפניות החברה בכלל או באמצעות אמצעי תקשורת ספציפי בפרט, עליו להודיע על כך לחברה באחת מדרכי התקשורת המפורטות באתר החברה.
+9. ככל שהדבר נדרש לפי דין, המידע האישי שמסר הלקוח לחברה, ככל שמסר, ישמר במאגר המידע של החברה (להלן: "מאגר המידע"). בעת מסירת המידע האישי לחברה, הלקוח מתחייב כי הפרטים שמסר הנם פרטים נכונים, מלאים ולא שגויים או מסולפים. הלקוח מצהיר כי ידוע לו כי במהלך פנייה אל מוקד השירות של החברה ייתכן כי שיחתו עם מוקד השירות תוקלט לטובת בקרה ושיפור השירות. ידוע ללקוח והוא מסכים כי החברה תשתמש במידע האישי לכל מטרה שהיא בהתאם להוראות כל דין. כך, למשל, רשאית החברה לעשות שימוש במידע האישי לצורך אספקת השירותים, ולצורך שינוי ושיפור התכנים והשירותים, הענקת שירותי תמיכה ויצירת מידע סטטיסטי. כמו כן, החברה רשאית לעשות שימוש במידע האישי בכפוף לכל דין על מנת לשלוח ללקוח מדי פעם ניוזלטרים ו/או הודעות ובהם עדכונים על מבצעים שונים, חידושים בשירותים הניתנים ו/או במוצרים המוצעים, הודעות ו/או פרסומות שונות (מטעם החברה ו/או מטעם צדדים שלישיים) שהחברה ו/או מי מטעמה חושבת שהלקוח עשוי למצוא בהם עניין (להלן: "דברי פרסומת").
+10. מוסכם כי המידע עשוי להימסר לגופים על פי דין או צו בית המשפט, בין אם מכוח רגולציה לטובת ניהול הליכים משפטיים ודומיהם, שותפים עסקיים, קיימים או פוטנציאליים, בכפוף ובהתאם לחוק ובכפוף לקיום התחייבותו של הצד האמור לשמירה על סודיות המידע. מבלי לגרוע מהאמור לעיל, במתן המידע מסכים הלקוח כי המידע יימסר לצורך עיבודו ואחסונו לכל צד שעיסוקו בכך, וזאת בכפוף להוראות חוק הגנת הפרטיות, התשמ"א-1981 בלבד.
+11. מוסכם כי החברה מתחייבת לשמור על חיסיון מלא של המידע האישי שמסר הלקוח ולא להעבירו לכל גורם אחר ו/או לצדדים שלישיים אלא באחד המקרים המפורטים להלן:
+  אם מסירת המידע האישי הינה במסגרת שיתופי פעולה בין החברה לבין צדדים שלישיים במסגרת האתר, כאשר המידע האישי דרוש לאותו צד שלישי לשם אספקת שירותים ללקוח, במידה הנדרשת והחיונית לצורך אספקת השירותים ו/או תפעול האתר. בחלק מהמקרים, יהיה על הלקוח להסכים לתנאי הפרטיות המוחלים על ידי הצד השלישי על מנת ליהנות מן השירותים.
+ אם החברה ביקשה את רשות הלקוח, והלקוח נתן את הסכמתו המפורשת לכך.
+ לתאגידים הקשורים לחברה לרבות חברות בנות, חברות אחיות, חברות אם- בכפוף להוראות הדין.
+ כדי לזהות, למנוע או לטפל בבעיות אבטחה או בעיות טכניות וכן במצבים שבהם נעשה שימוש באתר החברה על ידי מי שנחזה כי אינו מורשה להשתמש בשירותים וזאת כדי למנוע הונאות והתחזות.
+על מנת למלא אחר כל דין, לרבות בתגובה להליך משפטי, צו גילוי או בקשה של בית משפט או כל ערכאה מוסמכת או רשות אחרת, המורה לחברה למסור את פרטי הלקוח או המידע האישי אודות הלקוח לידי בית המשפט או הערכאה או הרשות האחרת או לידי צד שלישי כלשהו.
+ במקרה של מחלוקת משפטית בין הלקוח לבין החברה שתחייב חשיפת פרטי הלקוח.
+ אם הלקוח יבצע באתר החברה ו/או באמצעותה ו/או באמצעות את החברה פעולות אשר לדעת החברה עומדות בניגוד לדין או בניגוד לתנאי השימוש באתר.
+ אם החברה תמכור את פעילותה ו/או תעביר בכל דרך שהיא את פעילותה, כולה או חלקה, לצד שלישי כלשהו, בתמורה או שלא בתמורה, בין אם בדרך של המחאת זכויות ובין אם בדרך של מתן רישיון או רישיון משנה וכן במקרה שהחברה תתמזג עם גוף אחר או תמזג את פעילות האתר עם פעילותו של צד שלישי, ובלבד שצד שלישי זה יהיה מחויב למלא אחר כללי תנאי השימוש, לרבות מדיניות הפרטיות.
+ למען מתן השירות להחזרי מס ושירותים נוספים כגון ביטוח ופיננסים שהחברה שותפה בהם בפעילות עסקית עם צדדים שלישיים. מובהר כי הלקוח מאשר ומרשה לחברה ו/או מי מטעמה לפנות בשם הלקוח לכל גוף מוסדי לרבות, ולא רק, המוסד לביטוח לאומי, הר הביטוח, הר הכסף, אתר של הצבא ו/או אתרים ממשלתיים אחרים, וזאת לצורך קבלת מידע אודות מוצרים פנסיוניים, מוצרים פיננסיים, זכויות הלקוח ו/או תכנית ביטוח הנמצאים ברשות הלקוח. הלקוח מאשר ומרשה כי החברה ו/או מי מטעמה תציע לו שירותים פיננסיים אחרים ו/או תכניות ביטוח אחרות ו/או כל הצעה למיצוי זכויות בגין אובדן כושר עבודה.
+12. מובהר ללקוח כי על פי חוק הגנת הפרטיות התשמ"א-1981 כל אדם רשאי לעיין במידע המוחזק עליו במאגר מידע וכן רשאי אותו אדם לבקש מבעל מאגר המידע לתקן את המידע או למחקו, אם נמצא שהמידע המוחזק על אותו אדם אינו נכון, שלם ברור או מעודכן. ניתן לערער לבית משפט השלום על סירוב בעל מאגר המידע למלא בקשה זו בדרך ובאופן שנקבעו בתקנות.
+13. הלקוח מאשר לחברה להפיק סיסמא ורישום באתר רשות המיסים לצורך קידום הליך ההחזר ולצורך כך להשתמש בפרטי הזיהוי שלי וכן להקים כתובת דואר אלקטרוני זמני לצורך הפקת הסיסמא והרישום. כמו כן, הלקוח פוטר את החברה בכל מקרה של תקלה בכניסה ו/או בזיהוי ו/או בפרטים כתוצאה מהרישום כאמור ולרבות במקרה בו כתוצאה מהרישום לא יוכל הלקוח להיכנס מסיבה כלשהי לאתר רשות המיסים, לא תהיה ללקוח כל טענה ו/או תביעה ו/או דרישה כנגד החברה ו/או מי מטעמה בקשר לכך.
+
+14. לאחר שהחברה סיימה את עבודתה בהכנת הדוחות, הלקוח מתחייב לחתום על הדוחות השנתיים בתוך 3 ימי עסקים מקבלת הדוחות לחתימה וזאת בכדי שהחברה ו/או מי מטעמה תוכל להגיש את הדוחות ללא עיכוב.
+15. הלקוח מצהיר בזאת כי בבעלותו חשבון בנק תקין המנוהל באחד ממוסדות הבנקאיים המוכרים בישראל בדין. כמו כן, הלקוח מצהיר כי ידוע לו, שהחזר המס, ככל ויהיה זכאי לו, יתקבל באופן ישיר לחשבון הבנק שלו ולכן עליו להמציא אישור ניהול חשבון מקורי ו/או צילום ברור של שיק לחברה תוך 3 ימים מיום חתימתו על הסכם זה. כמו כן, הלקוח מתחייב להעביר לחברה צילום ברור של ת.ז. שלו, של בן/בת זוגו ושל ילדיו, כולל ספח וכן צילום ברור של רישיון נהיגה ו/או צילום דרכון ו/או מסמכים נוספים הנדרשים לצורך בדיקת הזכאות ולצורך הפקדת כספיי החזר המס, מטעם רשות המיסים, וזאת תוך 3 ימים מיום חתימת הסכם זה.
+16. הלקוח מתחייב להודיע על קבלת ההחזר ממס הכנסה עד 48 שעות מיום קבלת ההחזר וכן להציג ו/או להעביר כל מסמך ו/או הודעה ממס הכנסה ו/או מהרשויות השונות בעניין החזר המס.
+17. החברה שומרת לעצמה את הזכות לייצג את הלקוח בעניין החזר המס מול הרשויות לפי תנאי הסכם זה מדי שנה, אלא אם הלקוח יציין אחרת מראש או יודיע לחברה על רצונו להפסיק את הייצוג.
 18. תנאי תשלום: הלקוח מתחייב לשלם לחברה עמלה בגובה של ${clientData.commissionRate} מסכום ההחזר בתוספת מע"מ (להלן: "עמלה") וזאת רק לאחר קבלת הכסף לחשבון הבנק של הלקוח. סכום העמלה כאמור ישולמו עד ארבעה (4) ימי עסקים מרגע קבלת החזר המס בפועל בחשבונו האישי של הלקוח או בן/בת זוגו. העמלות כאמור ישולמו על-ידי הלקוח לחשבון בנק על שם החברה (ג'י.אי.אמ גלובל ניהול והשקעות בע"מ) בבנק: 20-מזרחי-טפחות, סניף: 481, חשבון: 347847, או באמצעות כרטיס אשראי, בהתאם לשיקול דעתה הבלעדי החברה. 
-ככל והלקוח לא יהיה ימצא זכאי להחזר לא ידרש לשלם עמלה כאמור בסעיף זה.`;
+ככל והלקוח לא יהיה ימצא זכאי להחזר לא ידרש לשלם עמלה כאמור בסעיף זה.
+19. אם העמלה לא תשולם במועדה כמצוין בסעיף 18 לעיל אזי ישלם המזמין לחברה סך של 50 ₪ עבור כל יום עיכוב בתשלום, ולא תהיה ללקוח כל טענה בקשר לכך. 
+20. כמו כן, ידוע ללקוח כי איחור בתשלום מעבר ל-14 ימים מיום קבלת החזר המס ללקוח יגרור התערבות המשפטית הכרוכה בהוצאות משפטיות בעלות של 1,500 ₪ בתוספת מע"מ כדין אשר יתווספו לחוב הלקוח.
+21. בכל מקרה שהלקוח יפגר בביצוע תשלום העמלה כמפורט לעיל מעבר ל-14 ימים, מתחייב הלקוח לשלם לחברה בנוסף לתשלום הפרשי ההצמדה, ריבית פיגורים בשיעור הנהוג אצל בנק מזרחי-טפחות בע״מ בחשבונות חח״ד (להלן: ״ריבית הפיגורים״), החל מהיום הראשון לפיגור. כמו כן, ידוע ללקוח כי כל סכום שעליו לשלם לחברה לרבות העמלה הינו בצירוף הפרשי הצמדה מדד המחירים לצרכן (כולל פרות וירקות) המתפרסם ע"י הלשכה המרכזית לסטטיסטיקה, או כל מדד אחר שיפורסם במקומו (המדד הבסיסי הינו המדד האחרון שפורסם לפני מועד חתימת הסכם זה).
+22. החברה מצהירה כי העמלה תגבה מהלקוח רק אם ללקוח ייכנס החזר מרשויות המס בפועל, במידה וללקוח אין החזר מרשויות מס, הלקוח לא משלם את העמלה כאמור להלן. 
+23. על אף האמור לעיל ולהלן, מוסכם כי החברה רשאית, בכל שלב ומכל סיבה שהיא בהתאם שיקול דעתה הבלעדי, לבטל הסכם זה ו/או להחליט שלא להגיש את הדוח מטעם הלקוח ולא לפעול להחזר מס בשם הלקוח, והלקוח מתחייב ומצהיר כי לא תהיה לו כל טענה ו/או דרישה ו/או תביעה כנגד החברה בקשר לכך. 
+24. במידה והלקוח דרש כספים מרשויות המס עבור 6 השנים האחרונות בעצמו או באמצעות גורם אחר ו/או במקרה של ביטול הלקוח את ייצוג החברה ברשות המיסים בטרם ניתנה החלטת רשות המיסים על גובה ההחזר או מניעת קבלת ההחזר על ידי הלקוח (כגון אי חתימה על דוחות ו/או אי מסירת מסמך נחוץ וכד'), תהיה החברה זכאית לעמלה על פי חישוב יועץ מס מטעמה והחישוב שלו יהווה ראיה מספקת לצורך הוכחת גובה ההחזר או מגובה ההחזר בפועל, לפי הגובה מביניהם.
+25. במידה והלקוח חייב בהגשת דוחות עפ"י דין ו/או כל הוראה אחרת (כגון לקוח עצמאי, בעל שליטה, עוסק מורשה וכד'), מתחייב הלקוח לשלם לחברה דמי טיפול בסך של 1,300 ₪ בתוספת מע"מ כדין עבור כל דוח שהוגש בשמו על-ידי החברה וזאת בנוסף לעמלה כמפורט בסעיף 18 לעיל.
+26. למען הסר ספק, מובהר כי ידוע ללקוח כי ככל והינו מיוצג באמצעות גורם אחר ברשויות השונות הנדרשות לצורך החזר המס, ייתכן ולאחר חתימתו על הסכם זה תירשם החברה ו/או מי מטעמה כמייצג במקום מייצגו הנוכחי ולא תהא ללקוח כל טענה ו/או תביעה ו/או דרישה נגד החברה בקשר לכך. כמו כן, הלקוח מצהיר כי פוטר בזאת את החברה בכל מקרה של תקלה בכניסה ו/או בזיהוי ו/או בפרטים כתוצאה מרישום הייצוג כאמור והלקוח לא יבוא לחברה בשום תלונה וטענה גם במקרה בו כתוצאה מהרישום לא יוכל הלקוח להיכנס מאיזה שהיא סיבה לאתרי רשות המיסים.
+27. כמו כן, מוסכם כי ככל והרשויות תבקשנה לקזז באופן מלא או חלקי מההחזר, מכל סיבה שהיא, לרבות קיזוז כלפי רשות אחרת או עיקול מכל מקור אחר ו/או במידה והחזר המס יועבר לחשבון מעוקל ו/או כונס נכסים ו/או כיסוי חובות ו/או עיקול אחר לפי צו, אין בכך כדי לפטור את הלקוח מתשלום העמלה במלואה בהתאם להחזר המס שהיה מגיע לפני הקיזוז.
+
+28. הלקוח מאשר כי בן או בת הזוג שלו, ככל שישנו, הסכים לטיפול בהחזר המס בקשר לתקופה המבוקשת לפי תנאי הסכם זה והלקוח מצהיר כי חותם על הסכם זה כשבידו ייפוי כח מבן/בת זוגו לחתום בשמו. החברה רשאית לתבוע פיצוי בגין נזקיה ככל שיהיו כתוצאה מטענה או תביעה של בן או בת הזוג כנגדה.
+29. על עסקה נשוא הסכם זה חלות הוראות החוק להגנת הצרכן, התשנ"א-1981. הלקוח רשאי לבטל את העסקה תוך ארבעה עשר (14) יום ממועד חתימת הסכם ההתקשרות או מיום קבלת מסמך זה, לפי המאוחר, ובתנאי שהביטול כאמור ייעשה עד שני (2) ימים שאינם ימי מנוחה לפני המועד שבו אמור השירות להינתן. יובהר כי החברה תתחיל במתן השירות יומיים לאחר חתימת הלקוח על הסכם זה. מאחר ואין עלות לטיפול כל עוד הלקוח לא זכאי להחזר בפועל, לא ייגבו דמי ביטול. למען הסר ספק, יובהר כי לאחר תחילת מתן השירות, הסכם זה לא ניתן לביטול והחברה תהא זכאית לעמלה בכל מקרה. הודעת הביטול תימסר על-ידי הלקוח מאחת מהדרכים הבאות: בדואר רשום לכתובת: ת.ד. 11067, פתח-תקווה מיקוד 4934829 או באמצעות דוא"ל office@quicktaxs.com.
+30. מובהר ומוסכם כי החברה או מי מטעמה מגיש בקשה להמצאת מסמכים לרשויות (לאחר קבלת האסמכתאות הדרושות לכך מהלקוח). עם קבלת המסמכים, רואה החשבון/יועץ מס של החברה מבצע בדיקת זכאות ואם ממצאי הלקוח נמצאים מתאימים, הוא יגיש לרשויות בקשה להחזר. מובהר כי מובן ללקוח כי הליך הבדיקה בטרם הגשת הבקשה לרשויות וכן זמן קבלת ההחזר עלול להימשך חודשים ארוכים וכי משך זמן ההמתנה למסמכים תלוי ברשויות הרלוונטיות ואינו בשליטת החברה. על אף האמור לעיל, ככל שתחסרנה אסמכתאות הנמצאות בידי הלקוח ייתכן והטיפול יימשך זמן ארוך יותר וללקוח לא תהיה כל טענה או תביעה בקשר לכך. ידוע ללקוח כי לאחר קבלת תשובה חיובית והגשת הדו"חות לרשויות, הכספים יועברו מרשויות המס ישירות אל חשבונו של הלקוח, וכי מועד קבלת הכספים בפועל בחשבונו של הלקוח תלוי אך ורק ברשויות המס והחברה אינה מתחייבת למועד ביצוע ההחזר ו/או סכומו והלקוח מצהיר כי לא תהיה לו כל טענה או תביעה כנגד החברה כתוצאה מעיכוב של הרשויות בבקשה להמצאת מסמכים, בקשת ההחזר והעברת הכספים.
+31. מוסכם ומוצהר כי ככל והפר הלקוח את התחייבויותיו כמפורט במסמך זה לעיל ולהלן לרבות, אך לא רק, מועד תשלום העמלה כאמור לעיל ו/או התחייבות הלקוח לעבוד בשיתוף פעולה מלא עם החברה (כולל עיכוב במסירת מסמכים נדרשים לצורך טיפול החברה כגון אישור ניהול חשבון, תואר אקדמאי, תושבות וכד') כאמור לעיל, ולא תיקן הלקוח את הפרתו תוך 7 ימי עסקים מיום שהודיעה לו החברה ו/או בא כוחה על הפרתו כאמור, אזי ישלם הלקוח לחברה סכום פיצוי מוסכם וקצוב ללא הוכחת נזק בסך של 2,000 ₪ בתוספת מע"מ כדין.
+32. הלקוח יהא האחראי הבלעדי להסדרת כל חובה או חבות שתהיה לו, מעת לעת, אל מול רשויות המס ולתשלום כל סכום שיידרש על ידי רשות מוסמכת.
+33. מוסכם מוצהר כי ככל ולאחר קבלת ההחזר ו/או סיום קבלת השירות כאמור, יהיה ברצון הלקוח לבטל את הייצוג שניתן לחברה מטעמו לפעול בפני הרשויות השונות, לרבות רשות המיסים ו/או המוסד לביטוח לאומי, לצורך מתן השירות כאמור, הרי שהלקוח מצהיר כי הינו האחראי הבלעדי לפעול באזור האישי של הלקוח ברשויות כאמור לצורך ביטול ייצוגו כאמור ולא תהיה לא כל טענה ו/או תביעה ו/או דרישה כלפי החברה בנוגע לכך.
+34. מוסכם ומוצהר כי סמכות השיפוט הבלעדית לכל עניין הנובע מהסכם זה יהיה לבית המשפט המוסמך בפתח-תקווה ו/או לשכת ההוצאה לפועל בפתח-תקווה.
+35. הלקוח מאשר ומרשה כי החברה ו/או מי מטעמה תציע לו שירותים פיננסיים אחרים ו/או תכניות ביטוח אחרות ו/או כל הצעה למיצוי זכויות בגין אובדן כושר עבודה.
+36. הלקוח מצהיר כי קרא את ההסכם ואת תנאיו לאחר שניתנה לו הזדמנות סבירה לעיין בו וכי מסר וימסור לחברה את כל המידע העדכני והמלא הידוע לו לטובת הטיפול בהחזרי מס, וכן ברורים לו התנאים והסייגים המפורטים בהסכם זה.
+37. כל האמור בהסכם זה בלשון זכר- אף נקבה כמשמע.
+38. בחתימתו על מסמך זה מאשר הלקוח לחברה או מי מטעמה לחתום בשמו ולהגיש בשמו טופס בקשה לרישום ייצוג ראשי/מתן ייפוי כוח של רשות המיסים ועל טופס ייפוי כח למייצג.
+39. להבטחת ביצוע התחייבויותיו לפי הסכם זה, הלקוח חותם מרצונו החופשי ולאחר שהבין את משמעות חתימתו על שטר חוב לטובת החברה. ידוע ללקוח כי החברה תהיה רשאית להגיש את שטר החוב לפירעון ללא כל התראה מוקדמת אם לא ישלם את העמלה המגיעה לחברה לפי הסכם זה. החברה המחזיקה בשטר החוב תהיה רשאית למלא בשטר כל פרט החסר בו והוא יהיה פטור מכל החובות המוטלות על המחזיקה בשטר, לרבות הצגה לתשלום, פרוטסט, הודעת אי כיבוד והודעת חילול שטר. מקום השיפוט הבלעדי והייחודי בכל תביעה על פי שטר החוב כאמור יהיה בבית המשפט המוסמך בפתח-תקווה בלבד.
+
+
+פרטי הלקוח:
+שם מלא: ${clientData.firstName} ${clientData.lastName}
+תעודת זהות: ${clientData.idNumber}  
+כתובת: ${clientData.address}
+טלפון: ${clientData.phone}
+דוא"ל: ${clientData.email}
+
+חתימת הלקוח: _________________________
+
+תאריך: ${new Date().toLocaleDateString('he-IL')}`;
 
 export const generateContractPDF = async (contractData: ContractData): Promise<void> => {
-  // Create a temporary HTML element with proper Hebrew styling
-  const tempContainer = document.createElement('div');
-  tempContainer.style.position = 'absolute';
-  tempContainer.style.left = '-9999px';
-  tempContainer.style.width = '800px';
-  tempContainer.style.padding = '40px';
-  tempContainer.style.fontFamily = 'Arial, sans-serif';
-  tempContainer.style.fontSize = '14px';
-  tempContainer.style.lineHeight = '1.6';
-  tempContainer.style.direction = 'rtl';
-  tempContainer.style.textAlign = 'right';
-  tempContainer.style.backgroundColor = 'white';
-  
   const contractText = getContractText(contractData.clientData);
   
-  tempContainer.innerHTML = `
+  // Create PDF with multiple pages
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  // Page 1: Contract with signature
+  const contractContainer = document.createElement('div');
+  contractContainer.style.position = 'absolute';
+  contractContainer.style.left = '-9999px';
+  contractContainer.style.width = '800px';
+  contractContainer.style.padding = '40px';
+  contractContainer.style.fontFamily = 'Arial, sans-serif';
+  contractContainer.style.fontSize = '12px';
+  contractContainer.style.lineHeight = '1.5';
+  contractContainer.style.direction = 'rtl';
+  contractContainer.style.textAlign = 'right';
+  contractContainer.style.backgroundColor = 'white';
+  
+  contractContainer.innerHTML = `
     <div style="max-width: 720px; margin: 0 auto; background: white; padding: 40px; line-height: 1.4;">
       <div style="text-align: center; margin-bottom: 30px;">
         <h1 style="font-size: 20px; font-weight: bold;">הסכם טיפול בהחזרי מס</h1>
       </div>
       
-      <div style="font-size: 11px; text-align: right; direction: rtl; line-height: 1.5; white-space: pre-wrap;">
+      <div style="font-size: 11px; text-align: right; direction: rtl; line-height: 1.4; white-space: pre-wrap;">
         ${contractText}
       </div>
       
-      <div style="margin-top: 50px; padding-top: 30px; border-top: 2px solid #333;">
-        <h2 style="text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 25px;">שטר חוב</h2>
-        
-        <div style="font-size: 12px; text-align: right; direction: rtl; line-height: 1.6;">
-          <p>אני הח"מ מתחייב לשלם לפקודת <strong>קוויק טקס</strong> את סכום <strong>${contractData.clientData.commissionRate}</strong> מכל סכום שיוחזר לי ממס הכנסה באמצעות החברה.</p>
-          
-          <p style="margin: 15px 0;">תאריך: <strong>${new Date().toLocaleDateString('he-IL')}</strong></p>
-          
-          <div style="margin: 30px 0; padding: 15px; border: 1px solid #ccc;">
-            <h4 style="margin-bottom: 10px;">פרטי עושה השטר:</h4>
-            <div style="margin-bottom: 8px;">
-              <span style="display: inline-block; width: 150px;"><strong>שם מלא:</strong></span>
-              <span><strong>${contractData.clientData.firstName} ${contractData.clientData.lastName}</strong></span>
-              <span style="margin-right: 40px; display: inline-block; width: 120px;"><strong>מספר תעודת זהות:</strong></span>
-              <span><strong>${contractData.clientData.idNumber}</strong></span>
-            </div>
-            <p><strong>כתובת:</strong> <strong>${contractData.clientData.address}</strong></p>
+      ${contractData.signature ? `
+        <div style="margin-top: 40px; text-align: center;">
+          <p style="margin-bottom: 15px; font-weight: bold;">חתימת הלקוח:</p>
+          <div style="border: 1px solid #ccc; padding: 15px; display: inline-block;">
+            <img src="${contractData.signature}" style="max-width: 200px; max-height: 80px;" />
           </div>
-          
-          ${contractData.signature ? `
-            <div style="margin: 30px 0; text-align: center;">
-              <p style="margin-bottom: 10px;"><strong>חתימת עושה השטר:</strong></p>
-              <div style="border: 1px solid #ccc; padding: 10px; display: inline-block;">
-                <img src="${contractData.signature}" style="max-width: 200px; max-height: 80px;" />
-              </div>
-            </div>
-          ` : `
-            <div style="margin: 30px 0; text-align: center;">
-              <p><strong>חתימת עושה השטר:</strong> _________________________</p>
-            </div>
-          `}
         </div>
-      </div>
+      ` : ''}
     </div>
   `;
   
-  document.body.appendChild(tempContainer);
+  let promissoryContainer: HTMLDivElement;
   
   try {
-    // Convert HTML to canvas
-    const canvas = await html2canvas(tempContainer, {
+    document.body.appendChild(contractContainer);
+    
+    // Convert contract to canvas and add to PDF
+    const contractCanvas = await html2canvas(contractContainer, {
       useCORS: true,
       allowTaint: true,
       scale: 2,
       width: 800,
-      height: tempContainer.scrollHeight,
+      height: contractContainer.scrollHeight,
       backgroundColor: 'white'
     });
     
-    // Create PDF
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgData = canvas.toDataURL('image/png');
+    const contractImgData = contractCanvas.toDataURL('image/png');
+    const contractImgWidth = pageWidth - 20;
+    const contractImgHeight = (contractCanvas.height * contractImgWidth) / contractCanvas.width;
     
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pdfWidth - 20; // 10mm margin on each side
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = contractImgHeight;
+    let position = 10;
     
-    let heightLeft = imgHeight;
-    let position = 10; // 10mm top margin
+    // Add contract pages
+    pdf.addImage(contractImgData, 'PNG', 10, position, contractImgWidth, contractImgHeight);
+    heightLeft -= pageHeight - 20;
     
-    // Add first page
-    pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-    heightLeft -= pdfHeight - 20; // Account for margins
-    
-    // Add additional pages if needed
     while (heightLeft >= 0) {
-      position = heightLeft - imgHeight + 10;
+      position = heightLeft - contractImgHeight + 10;
       pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight - 20;
+      pdf.addImage(contractImgData, 'PNG', 10, position, contractImgWidth, contractImgHeight);
+      heightLeft -= pageHeight - 20;
     }
+    
+    document.body.removeChild(contractContainer);
+    
+    // Page 2: שטר חוב (Promissory Note) on separate page
+    pdf.addPage();
+    
+    promissoryContainer = document.createElement('div');
+    promissoryContainer.style.position = 'absolute';
+    promissoryContainer.style.left = '-9999px';
+    promissoryContainer.style.width = '800px';
+    promissoryContainer.style.padding = '40px';
+    promissoryContainer.style.fontFamily = 'Arial, sans-serif';
+    promissoryContainer.style.fontSize = '14px';
+    promissoryContainer.style.lineHeight = '1.6';
+    promissoryContainer.style.direction = 'rtl';
+    promissoryContainer.style.textAlign = 'right';
+    promissoryContainer.style.backgroundColor = 'white';
+    
+    promissoryContainer.innerHTML = `
+      <div style="max-width: 720px; margin: 0 auto; background: white; padding: 40px; line-height: 1.4;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="font-size: 24px; font-weight: bold;">שטר חוב</h1>
+        </div>
+        
+        <div style="font-size: 12px; text-align: right; direction: rtl; line-height: 1.6;">
+          <p style="margin-bottom: 20px;">שנערך ונחתם ביום: <strong>${new Date().toLocaleDateString('he-IL')}</strong></p>
+          
+          <p style="margin-bottom: 15px;">אני הח"מ מתחייב/ת לשלם לפקודת <strong>ג'י.אי.אמ גלובל ניהול והשקעות בע"מ ח.פ. 513218453</strong></p>
+          
+          <p style="margin-bottom: 20px;">סך של <strong>${contractData.clientData.commissionRate}</strong> מכל סכום שיוחזר לי ממס הכנסה באמצעות החברה.</p>
+          
+          <div style="margin: 30px 0; padding: 20px; border: 2px solid #333;">
+            <h3 style="margin-bottom: 15px; font-weight: bold;">פרטי עושה השטר:</h3>
+            <div style="margin-bottom: 10px;">
+              <span style="display: inline-block; width: 120px;"><strong>שם מלא:</strong></span>
+              <span><strong>${contractData.clientData.firstName} ${contractData.clientData.lastName}</strong></span>
+            </div>
+            <div style="margin-bottom: 10px;">
+              <span style="display: inline-block; width: 120px;"><strong>תעודת זהות:</strong></span>
+              <span><strong>${contractData.clientData.idNumber}</strong></span>
+            </div>
+            <div style="margin-bottom: 10px;">
+              <span style="display: inline-block; width: 120px;"><strong>כתובת:</strong></span>
+              <span><strong>${contractData.clientData.address}</strong></span>
+            </div>
+          </div>
+          
+          ${contractData.signature ? `
+            <div style="margin: 40px 0; text-align: center;">
+              <p style="margin-bottom: 15px; font-weight: bold;">חתימת עושה השטר:</p>
+              <div style="border: 2px solid #333; padding: 15px; display: inline-block;">
+                <img src="${contractData.signature}" style="max-width: 200px; max-height: 80px;" />
+              </div>
+            </div>
+          ` : `
+            <div style="margin: 40px 0; text-align: center;">
+              <p style="margin-bottom: 30px; font-weight: bold;">חתימת עושה השטר:</p>
+              <div style="border-bottom: 2px solid #333; width: 300px; margin: 0 auto; height: 50px;"></div>
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(promissoryContainer);
+    
+    // Convert promissory note to canvas and add to PDF
+    const promissoryCanvas = await html2canvas(promissoryContainer, {
+      useCORS: true,
+      allowTaint: true,
+      scale: 2,
+      width: 800,
+      height: promissoryContainer.scrollHeight,
+      backgroundColor: 'white'
+    });
+    
+    const promissoryImgData = promissoryCanvas.toDataURL('image/png');
+    const promissoryImgWidth = pageWidth - 20;
+    const promissoryImgHeight = (promissoryCanvas.height * promissoryImgWidth) / promissoryCanvas.width;
+    
+    pdf.addImage(promissoryImgData, 'PNG', 10, 10, promissoryImgWidth, promissoryImgHeight);
+    
+    document.body.removeChild(promissoryContainer);
     
     // Save the PDF
     pdf.save(`contract-${contractData.leadId}.pdf`);
     
-  } finally {
-    // Clean up
-    document.body.removeChild(tempContainer);
+  } catch (error) {
+    // Clean up containers in case of error
+    if (document.body.contains(contractContainer)) {
+      document.body.removeChild(contractContainer);
+    }
+    if (promissoryContainer && document.body.contains(promissoryContainer)) {
+      document.body.removeChild(promissoryContainer);
+    }
+    throw error;
   }
 };
