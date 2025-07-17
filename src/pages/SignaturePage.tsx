@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +13,32 @@ export const SignaturePage: React.FC = () => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSigned, setIsSigned] = useState(false);
   const { toast } = useToast();
+
+  // Prevent phone back button navigation after signing
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (isSigned) {
+        e.preventDefault();
+        window.history.pushState(null, '', window.location.pathname);
+        toast({
+          title: "לא ניתן לחזור",
+          description: "לא ניתן לחזור לאחר החתימה על ההסכם",
+          variant: "destructive",
+        });
+      }
+    };
+
+    if (isSigned) {
+      window.history.pushState(null, '', window.location.pathname);
+      window.addEventListener('popstate', handlePopState);
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isSigned, toast]);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -122,7 +147,8 @@ export const SignaturePage: React.FC = () => {
     try {
       if (canvas) {
         const signatureDataURL = canvas.toDataURL();
-        console.log('Signature data:', signatureDataURL);
+        localStorage.setItem(`signature-${leadId}`, signatureDataURL);
+        console.log('Signature saved:', signatureDataURL);
         
         await new Promise(resolve => setTimeout(resolve, 1500));
         
@@ -144,8 +170,6 @@ export const SignaturePage: React.FC = () => {
       setIsSubmitting(false);
     }
   };
-
-  const [isSigned, setIsSigned] = useState(false);
 
   const handlePrevious = () => {
     if (isSigned) {
@@ -206,6 +230,7 @@ export const SignaturePage: React.FC = () => {
                   width={800}
                   height={300}
                   className="w-full h-72 cursor-crosshair border border-border rounded bg-white touch-none"
+                  style={{ touchAction: 'none' }}
                   onMouseDown={startDrawing}
                   onMouseMove={draw}
                   onMouseUp={stopDrawing}

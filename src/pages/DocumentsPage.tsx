@@ -178,19 +178,22 @@ export const DocumentsPage: React.FC = () => {
       // Get signature from localStorage (saved in SignaturePage)
       const signature = localStorage.getItem(`signature-${leadId}`);
       
-      // Use the real client data structure
+      // Get client data from localStorage or use defaults
+      const storedClientData = localStorage.getItem(`clientData-${leadId}`);
+      const clientData = storedClientData ? JSON.parse(storedClientData) : {
+        firstName: 'יוסי',
+        lastName: 'כהן',
+        idNumber: '123456789',
+        phone: '050-1234567',
+        email: 'yossi.cohen@email.com',
+        address: 'רחוב הרצל 1, תל אביב',
+        commissionRate: '25%',
+      };
+
       const contractData = {
         leadId: leadId || '12345',
         signature: signature || undefined,
-        clientData: {
-          firstName: 'יוסי',
-          lastName: 'כהן',
-          idNumber: '123456789',
-          phone: '050-1234567',
-          email: 'yossi.cohen@email.com',
-          address: 'רחוב הרצל 1, תל אביב',
-          commissionRate: '25%',
-        },
+        clientData,
       };
 
       await generateContractPDF(contractData);
