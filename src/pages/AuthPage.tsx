@@ -1,21 +1,18 @@
 import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Upload, Shield, FileText } from 'lucide-react';
 
 export default function AuthPage() {
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [clientNumber, setClientNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -29,58 +26,34 @@ export default function AuthPage() {
     setIsLoading(true);
 
     try {
-      if (!email || !password) {
+      if (!clientNumber) {
         toast({
           title: "שגיאה",
-          description: "אנא מלא את כל השדות",
+          description: "אנא הכנס מספר לקוח",
           variant: "destructive",
         });
         return;
       }
 
-      if (password.length < 6) {
-        toast({
-          title: "שגיאה",
-          description: "הסיסמה חייבת להכיל לפחות 6 תווים",
-          variant: "destructive",
-        });
-        return;
-      }
+      // For demo purposes, use client number as both email and password
+      const demoEmail = `${clientNumber}@demo.com`;
+      const demoPassword = clientNumber;
 
-      const { error } = isSignUp 
-        ? await signUp(email, password)
-        : await signIn(email, password);
+      const { error } = await signIn(demoEmail, demoPassword);
 
       if (error) {
         console.error('Auth error:', error);
-        
-        let errorMessage = "אירעה שגיאה";
-        if (error.message.includes('Invalid login credentials')) {
-          errorMessage = "פרטי התחברות שגויים";
-        } else if (error.message.includes('User already registered')) {
-          errorMessage = "משתמש כבר רשום במערכת";
-        } else if (error.message.includes('Email not confirmed')) {
-          errorMessage = "אנא אמת את כתובת המייל שלך";
-        }
-
         toast({
-          title: isSignUp ? "שגיאה בהרשמה" : "שגיאה בהתחברות",
-          description: errorMessage,
+          title: "שגיאה בהתחברות",
+          description: "מספר לקוח שגוי או לא קיים במערכת",
           variant: "destructive",
         });
       } else {
-        if (isSignUp) {
-          toast({
-            title: "הרשמה הושלמה",
-            description: "נשלח מייל לאימות. אנא בדוק את תיבת הדואר שלך",
-          });
-        } else {
-          toast({
-            title: "התחברת בהצלחה",
-            description: "ברוך הבא למערכת",
-          });
-          navigate('/');
-        }
+        toast({
+          title: "התחברת בהצלחה",
+          description: "ברוך הבא לפורטל הלקוחות",
+        });
+        navigate('/');
       }
     } catch (error) {
       console.error('Unexpected error:', error);
@@ -95,103 +68,136 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">
-            {isSignUp ? 'הרשמה למערכת' : 'התחברות למערכת'}
-          </CardTitle>
-          <CardDescription>
-            {isSignUp 
-              ? 'צור חשבון חדש כדי להתחיל' 
-              : 'הכנס את פרטי ההתחברות שלך'
-            }
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">כתובת מייל</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                disabled={isLoading}
-                dir="ltr"
-              />
+    <div className="min-h-screen bg-gray-50 p-4" dir="rtl">
+      {/* Header */}
+      <div className="text-center mb-8 pt-8">
+        <h1 className="text-4xl font-bold text-blue-600 mb-2">קוויק סקן</h1>
+        <p className="text-gray-600">פורטל לקוחות - חתירי מס דיגיטלי</p>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Login Card */}
+        <Card className="p-8">
+          <CardContent className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                ברוכים הבאים לפורטל הלקוחות
+              </h2>
+              <p className="text-gray-600 mb-6">
+                התחל את המילוי הזהיר הפכם הדיגיטלי שלך באורח פשוטה, מהירה ובטוחה
+              </p>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password">סיסמה</Label>
-              <div className="relative">
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="clientNumber" className="text-right">מספר לקוח</Label>
                 <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  id="clientNumber"
+                  type="text"
+                  value={clientNumber}
+                  onChange={(e) => setClientNumber(e.target.value)}
+                  placeholder="הכן את מספר הלקוח שלך"
                   required
                   disabled={isLoading}
-                  dir="ltr"
+                  className="text-right"
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute left-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
               </div>
-              {isSignUp && (
-                <p className="text-sm text-muted-foreground">
-                  הסיסמה חייבת להכיל לפחות 6 תווים
-                </p>
-              )}
-            </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
-              ) : isSignUp ? (
-                <UserPlus className="h-4 w-4 mr-2" />
-              ) : (
-                <LogIn className="h-4 w-4 mr-2" />
-              )}
-              {isLoading ? 'טוען...' : isSignUp ? 'הרשמה' : 'התחברות'}
-            </Button>
-          </form>
-          
-          <div className="mt-4 text-center">
-            <Button
-              type="button"
-              variant="link"
-              onClick={() => setIsSignUp(!isSignUp)}
-              disabled={isLoading}
-              className="text-sm"
-            >
-              {isSignUp 
-                ? 'כבר יש לך חשבון? התחבר כאן' 
-                : 'אין לך חשבון? הרשם כאן'
-              }
-            </Button>
+              
+              <Button 
+                type="submit" 
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
+                disabled={isLoading}
+              >
+                <ArrowLeft className="h-5 w-5 ml-2" />
+                {isLoading ? 'טוען...' : 'התחל מהיר'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Process Steps */}
+        <div className="space-y-8">
+          <div className="text-center">
+            <h3 className="text-2xl font-bold text-gray-800 mb-8">שלבי התהליך</h3>
           </div>
-        </CardContent>
-      </Card>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Step 4 */}
+            <div className="text-center">
+              <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="h-8 w-8 text-blue-600" />
+              </div>
+              <h4 className="font-bold text-gray-800 mb-2">סיום התהליך</h4>
+              <p className="text-sm text-gray-600 mb-2">
+                קבל אישור והמלת לבדיקת תקינות
+              </p>
+              <div className="text-2xl font-bold text-blue-600">4</div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="text-center">
+              <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <Upload className="h-8 w-8 text-blue-600" />
+              </div>
+              <h4 className="font-bold text-gray-800 mb-2">העלאת מסמכים</h4>
+              <p className="text-sm text-gray-600 mb-2">
+                העלה את המסמכים הנדרשים למערכת
+              </p>
+              <div className="text-2xl font-bold text-blue-600">3</div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="text-center">
+              <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <Shield className="h-8 w-8 text-blue-600" />
+              </div>
+              <h4 className="font-bold text-gray-800 mb-2">חתימה דיגיטלית</h4>
+              <p className="text-sm text-gray-600 mb-2">
+                חתום על המסמך באופן דיגיטלי בטוח
+              </p>
+              <div className="text-2xl font-bold text-blue-600">2</div>
+            </div>
+
+            {/* Step 1 */}
+            <div className="text-center">
+              <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <FileText className="h-8 w-8 text-blue-600" />
+              </div>
+              <h4 className="font-bold text-gray-800 mb-2">קריאת המסמך</h4>
+              <p className="text-sm text-gray-600 mb-2">
+                קרא את תמצית המסמך והבן את צרכיו
+              </p>
+              <div className="text-2xl font-bold text-blue-600">1</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Section */}
+      <div className="max-w-6xl mx-auto mt-16 grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="p-6">
+          <CardContent>
+            <h4 className="font-bold text-gray-800 mb-4 text-center">פרטי יצירת קשר</h4>
+            <div className="space-y-2 text-sm text-gray-600 text-center">
+              <p>טלפון: 03-1234567</p>
+              <p>אימייל: info@quickscan.co.il</p>
+              <p>כתובת: רחוב הטכנולוגיה 1, תל אביב</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="p-6">
+          <CardContent>
+            <h4 className="font-bold text-gray-800 mb-4 text-center">אודות השירות</h4>
+            <div className="space-y-2 text-sm text-gray-600 text-center">
+              <p>שעות פעילות: א'-ה' 08:00-18:00</p>
+              <p>מוקד תמיכה: 24/7</p>
+              <p>זמינות מערכת: 99.9%</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
