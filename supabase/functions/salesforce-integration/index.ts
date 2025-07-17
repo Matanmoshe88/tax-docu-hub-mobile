@@ -62,7 +62,8 @@ async function uploadDocumentToSalesforce(
     Name: "חתימה",
     Lead__c: leadId,
     DocumentType__c: "חתימה",
-    doc_url__c: signatureUrl
+    doc_url__c: signatureUrl,
+    DocumentManager__c: "a0UWn000000tgUrMAI"
   };
 
   console.log('📄 Document data:', JSON.stringify(documentData, null, 2));
