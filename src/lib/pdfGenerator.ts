@@ -1,9 +1,9 @@
-import * as pdfMake from 'pdfmake/build/pdfmake';
-import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { generateContractText } from './contractUtils';
 
 // Configure pdfMake with default fonts
-pdfMake.vfs = pdfFonts.pdfMake.vfs;
+pdfMake.vfs = pdfFonts;
 
 // Load Hebrew font dynamically
 async function loadHebrewFont() {
