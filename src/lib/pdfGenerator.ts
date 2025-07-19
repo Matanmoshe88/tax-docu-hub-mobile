@@ -2,6 +2,7 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { generateContractText } from './contractUtils';
+import bidi from 'bidi-js';
 
 export async function generateContractPDF(contractData: any, signatureDataURL: string) {
   console.log('🎯 Starting PDF generation with Hebrew support');
@@ -42,87 +43,134 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   const fontSize = 12;
   const lineHeight = 20;
   
-  // Helper to add text with Noto Sans Hebrew support
-  const addText = (text: string, size: number = fontSize, x: number = margin) => {
+  // Helper function to process Hebrew text with RTL support
+  const processHebrewText = (text: string): string => {
+    if (!text) return '';
+    
+    // Clean and process the text for proper RTL display
+    let cleanText = text
+      .replace(/[\u202A\u202B\u202C\u202D\u202E]/g, '') // Remove directional marks
+      .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
+      .replace(/undefined/g, '_______') // Replace undefined with placeholders
+      .trim();
+    
+    try {
+      // Use bidi-js to process Hebrew text with proper RTL handling
+      cleanText = bidi(cleanText, { dir: 'rtl' });
+      
+      // Fix numbers that might appear as colons - wrap them in LTR markers
+      cleanText = cleanText.replace(/(\d[\d\-\/\.]*\d|\d)/g, '\u202D$1\u202C');
+      
+      return cleanText;
+    } catch (e) {
+      console.log('⚠️ Bidi processing failed, using original text:', e);
+      // Fallback: manual number fix
+      return cleanText.replace(/:/g, '').replace(/(\d[\d\-\/\.]*\d|\d)/g, '\u202D$1\u202C');
+    }
+  };
+
+  // Helper to add RTL text with proper alignment
+  const addRTLText = (text: string, size: number = fontSize, isTitle: boolean = false, isBold: boolean = false) => {
     if (yPosition < margin + 50) {
       page = pdfDoc.addPage();
       yPosition = height - margin;
     }
     
+    const processedText = processHebrewText(text);
+    console.log('📝 Adding RTL text:', processedText.substring(0, 50) + '...');
+    
     try {
-      // Clean text but preserve Hebrew characters
-      const cleanText = text
-        .replace(/[\u202A\u202B\u202C\u202D\u202E]/g, '') // Remove directional marks
-        .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
-        .trim();
+      // Calculate x position for right alignment
+      let xPosition = width - margin;
+      if (isTitle) {
+        // Center titles
+        xPosition = width / 2;
+      }
       
-      console.log('📝 Adding text with Noto Sans Hebrew:', cleanText.substring(0, 30) + '...');
-      
-      page.drawText(cleanText, {
-        x: x,
+      page.drawText(processedText, {
+        x: xPosition,
         y: yPosition,
         size: size,
         font: font,
         color: rgb(0, 0, 0),
+        // For RTL text, we need to position from the right
+        ...(isTitle ? {} : { textAlign: 'right' as any })
       });
       
     } catch (e) {
-      console.log('❌ Error rendering text:', text.substring(0, 30), 'Error:', e.message);
-      
-      // If we can't render with the Hebrew font, there might be an encoding issue
-      // Try with a simple transliteration as last resort
+      console.log('❌ Error rendering RTL text:', e.message);
+      // Fallback with simple text
       try {
-        const englishText = `[Hebrew Text: ${text.length} characters]`;
-        page.drawText(englishText, {
-          x: x,
+        const fallbackText = `[Hebrew Text: ${text.length} chars]`;
+        page.drawText(fallbackText, {
+          x: width - margin,
           y: yPosition,
           size: size,
           font: font,
-          color: rgb(0.5, 0.5, 0.5), // Gray color to indicate this is a fallback
+          color: rgb(0.5, 0.5, 0.5),
         });
       } catch (e2) {
         console.log('❌ Even fallback failed:', e2);
       }
     }
     
-    yPosition -= lineHeight;
+    yPosition -= lineHeight * (isBold ? 1.5 : 1.2);
   };
   
-  // Generate the actual contract text
+  // Generate and process the contract text
   const contractText = generateContractText(contractData);
-  console.log('📄 Generated contract text length:', contractText.length);
+  console.log('📄 Processing contract text with RTL support, length:', contractText.length);
   
-  // Add contract content
-  addText('הסכם שירות להחזרי מס', 18, width/2 - 100);
-  yPosition -= 30;
+  // Add title - centered
+  addRTLText('הסכם שירות להחזרי מס', 18, true, true);
+  yPosition -= 20;
   
-  // Split contract text into lines and add to PDF
-  const lines = contractText.split('\n');
-  lines.forEach((line: string) => {
-    if (line.trim()) {
-      // Handle long lines by wrapping them
-      if (line.length > 80) {
-        const words = line.split(' ');
-        let currentLine = '';
-        words.forEach((word: string) => {
-          if (currentLine.length + word.length > 80) {
-            if (currentLine) {
-              addText(currentLine, fontSize, margin);
+  // Add contract details with proper RTL formatting
+  const currentDate = new Date().toLocaleDateString('he-IL');
+  addRTLText(`תאריך: ${currentDate}`, 12);
+  addRTLText(`מספר חוזה: ${contractData.contractNumber || 'לא צוין'}`, 12);
+  yPosition -= 15;
+  
+  // Process contract content in sections
+  const sections = contractText.split('\n\n'); // Split by paragraph breaks
+  
+  sections.forEach((section: string, index: number) => {
+    if (section.trim()) {
+      // Check if this is a numbered section (starts with number)
+      const isNumberedSection = /^\d+\./.test(section.trim());
+      
+      if (isNumberedSection) {
+        // Add extra spacing before numbered sections
+        yPosition -= 10;
+        addRTLText(section, 12, false, true);
+      } else {
+        // Regular paragraph text
+        const lines = section.split('\n');
+        lines.forEach((line: string) => {
+          if (line.trim()) {
+            // Handle long lines by breaking them appropriately for RTL
+            if (line.length > 80) {
+              const words = line.split(' ');
+              let currentLine = '';
+              words.forEach((word: string) => {
+                if (currentLine.length + word.length > 80) {
+                  if (currentLine) {
+                    addRTLText(currentLine, fontSize);
+                  }
+                  currentLine = word + ' ';
+                } else {
+                  currentLine += word + ' ';
+                }
+              });
+              if (currentLine) {
+                addRTLText(currentLine, fontSize);
+              }
+            } else {
+              addRTLText(line, fontSize);
             }
-            currentLine = word + ' ';
-          } else {
-            currentLine += word + ' ';
           }
         });
-        if (currentLine) {
-          addText(currentLine, fontSize, margin);
-        }
-      } else {
-        addText(line, fontSize, margin);
       }
-    } else {
-      // Empty line for spacing
-      yPosition -= lineHeight / 2;
     }
   });
   
@@ -197,85 +245,133 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   const fontSize = 12;
   const lineHeight = 20;
   
-  // Helper to add text with Noto Sans Hebrew support
-  const addText = (text: string, size: number = fontSize, x: number = margin) => {
+  // Helper function to process Hebrew text with RTL support (same as main function)
+  const processHebrewText = (text: string): string => {
+    if (!text) return '';
+    
+    // Clean and process the text for proper RTL display
+    let cleanText = text
+      .replace(/[\u202A\u202B\u202C\u202D\u202E]/g, '') // Remove directional marks
+      .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
+      .replace(/undefined/g, '_______') // Replace undefined with placeholders
+      .trim();
+    
+    try {
+      // Use bidi-js to process Hebrew text with proper RTL handling
+      cleanText = bidi(cleanText, { dir: 'rtl' });
+      
+      // Fix numbers that might appear as colons - wrap them in LTR markers
+      cleanText = cleanText.replace(/(\d[\d\-\/\.]*\d|\d)/g, '\u202D$1\u202C');
+      
+      return cleanText;
+    } catch (e) {
+      console.log('⚠️ Bidi processing failed for blob, using original text:', e);
+      // Fallback: manual number fix
+      return cleanText.replace(/:/g, '').replace(/(\d[\d\-\/\.]*\d|\d)/g, '\u202D$1\u202C');
+    }
+  };
+
+  // Helper to add RTL text with proper alignment (same as main function)
+  const addRTLText = (text: string, size: number = fontSize, isTitle: boolean = false, isBold: boolean = false) => {
     if (yPosition < margin + 50) {
       page = pdfDoc.addPage();
       yPosition = height - margin;
     }
     
+    const processedText = processHebrewText(text);
+    
     try {
-      // Clean text but preserve Hebrew characters
-      const cleanText = text
-        .replace(/[\u202A\u202B\u202C\u202D\u202E]/g, '') // Remove directional marks
-        .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
-        .trim();
+      // Calculate x position for right alignment
+      let xPosition = width - margin;
+      if (isTitle) {
+        // Center titles
+        xPosition = width / 2;
+      }
       
-      page.drawText(cleanText, {
-        x: x,
+      page.drawText(processedText, {
+        x: xPosition,
         y: yPosition,
         size: size,
         font: font,
         color: rgb(0, 0, 0),
+        // For RTL text, we need to position from the right
+        ...(isTitle ? {} : { textAlign: 'right' as any })
       });
       
     } catch (e) {
-      console.log('❌ Error rendering text for blob:', text.substring(0, 30), 'Error:', e.message);
-      
-      // If we can't render with the Hebrew font, there might be an encoding issue
-      // Try with a simple transliteration as last resort
+      console.log('❌ Error rendering RTL text for blob:', e.message);
+      // Fallback with simple text
       try {
-        const englishText = `[Hebrew Text: ${text.length} characters]`;
-        page.drawText(englishText, {
-          x: x,
+        const fallbackText = `[Hebrew Text: ${text.length} chars]`;
+        page.drawText(fallbackText, {
+          x: width - margin,
           y: yPosition,
           size: size,
           font: font,
-          color: rgb(0.5, 0.5, 0.5), // Gray color to indicate this is a fallback
+          color: rgb(0.5, 0.5, 0.5),
         });
       } catch (e2) {
         console.log('❌ Even fallback failed for blob:', e2);
       }
     }
     
-    yPosition -= lineHeight;
+    yPosition -= lineHeight * (isBold ? 1.5 : 1.2);
   };
   
-  // Generate the actual contract text
+  // Generate and process the contract text
   const contractText = generateContractText(contractData);
-  console.log('📄 Generated contract text for blob, length:', contractText.length);
+  console.log('📄 Processing contract text with RTL support for blob, length:', contractText.length);
   
-  // Add contract content
-  addText('הסכם שירות להחזרי מס', 18, width/2 - 100);
-  yPosition -= 30;
+  // Add title - centered
+  addRTLText('הסכם שירות להחזרי מס', 18, true, true);
+  yPosition -= 20;
   
-  // Split contract text into lines and add to PDF
-  const lines = contractText.split('\n');
-  lines.forEach((line: string) => {
-    if (line.trim()) {
-      // Handle long lines by wrapping them
-      if (line.length > 80) {
-        const words = line.split(' ');
-        let currentLine = '';
-        words.forEach((word: string) => {
-          if (currentLine.length + word.length > 80) {
-            if (currentLine) {
-              addText(currentLine, fontSize, margin);
+  // Add contract details with proper RTL formatting
+  const currentDate = new Date().toLocaleDateString('he-IL');
+  addRTLText(`תאריך: ${currentDate}`, 12);
+  addRTLText(`מספר חוזה: ${contractData.contractNumber || 'לא צוין'}`, 12);
+  yPosition -= 15;
+  
+  // Process contract content in sections
+  const sections = contractText.split('\n\n'); // Split by paragraph breaks
+  
+  sections.forEach((section: string, index: number) => {
+    if (section.trim()) {
+      // Check if this is a numbered section (starts with number)
+      const isNumberedSection = /^\d+\./.test(section.trim());
+      
+      if (isNumberedSection) {
+        // Add extra spacing before numbered sections
+        yPosition -= 10;
+        addRTLText(section, 12, false, true);
+      } else {
+        // Regular paragraph text
+        const lines = section.split('\n');
+        lines.forEach((line: string) => {
+          if (line.trim()) {
+            // Handle long lines by breaking them appropriately for RTL
+            if (line.length > 80) {
+              const words = line.split(' ');
+              let currentLine = '';
+              words.forEach((word: string) => {
+                if (currentLine.length + word.length > 80) {
+                  if (currentLine) {
+                    addRTLText(currentLine, fontSize);
+                  }
+                  currentLine = word + ' ';
+                } else {
+                  currentLine += word + ' ';
+                }
+              });
+              if (currentLine) {
+                addRTLText(currentLine, fontSize);
+              }
+            } else {
+              addRTLText(line, fontSize);
             }
-            currentLine = word + ' ';
-          } else {
-            currentLine += word + ' ';
           }
         });
-        if (currentLine) {
-          addText(currentLine, fontSize, margin);
-        }
-      } else {
-        addText(line, fontSize, margin);
       }
-    } else {
-      // Empty line for spacing
-      yPosition -= lineHeight / 2;
     }
   });
   
