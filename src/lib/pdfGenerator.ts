@@ -2,9 +2,8 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable'; // For better table support if needed
 
-// Add Hebrew font to jsPDF (you need to convert a Hebrew font to Base64)
-// Use a tool like https://rawgit.com/MrRio/jsPDF/master/fontconverter/fontconverter.html
-import './hebrewFont'; // This should contain the font data
+// Hebrew font support will be added later
+// import './hebrewFont'; // This should contain the font data
 
 export async function generateContractPDF(contractData: any, signatureDataURL: string) {
   // Initialize PDF with compression
@@ -16,12 +15,20 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
     putOnlyUsedFonts: true
   });
 
-  // Set Hebrew font
-  doc.setFont('HebrewFont'); // Use the name you gave when adding the font
+  // Use Arial for now (will add Hebrew font later)
+  try {
+    doc.setFont('HebrewFont');
+  } catch (e) {
+    // Fallback to Arial if Hebrew font not available
+    doc.setFont('Arial', 'normal');
+  }
   
-  // Enable RTL
-  doc.setR2L(true);
-  
+  // Enable RTL (try/catch for compatibility)
+  try {
+    doc.setR2L(true);
+  } catch (e) {
+    console.warn('RTL not supported in this jsPDF version');
+  }
   // Constants
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
