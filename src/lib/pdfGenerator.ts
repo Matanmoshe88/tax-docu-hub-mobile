@@ -13,7 +13,8 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
     phone: contractData.phone || contractData.client?.phone || '',
     email: contractData.email || contractData.client?.email || '',
     address: contractData.address || contractData.client?.address || '',
-    commissionRate: contractData.commissionRate || contractData.client?.commissionRate || '25%'
+    commissionRate: contractData.commissionRate || contractData.client?.commissionRate || '25%',
+    contractNumber: contractData.contractNumber || contractData.client?.contractNumber || ''
   };
   
   const contractText = generateContractText(clientData);
