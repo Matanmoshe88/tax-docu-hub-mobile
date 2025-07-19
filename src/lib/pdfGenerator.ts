@@ -246,4 +246,10 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   return blob;
 }
 
+// Export alias for backwards compatibility
+export const generateContractPDFBlob = generateContractPDF;
+
+// Export function for creating and downloading PDF directly
+export const createAndDownloadPDF = generateContractPDF;
+
 // Apply the same fixes to generateContractPDFBlob function...
