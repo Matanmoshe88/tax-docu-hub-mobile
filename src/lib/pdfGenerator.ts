@@ -82,9 +82,13 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
     }
     
     const processedText = processHebrewText(text);
-    if (!processedText) return;
+    if (!processedText) {
+      // Still decrement position for empty lines to maintain spacing
+      yPosition -= lineHeight * 0.5;
+      return;
+    }
     
-    console.log('📝 Adding RTL text with proper margins:', processedText.substring(0, 50) + '...');
+    console.log('📝 Adding RTL text at Y:', yPosition, 'Text:', processedText.substring(0, 50) + '...');
     
     try {
       // Calculate proper text area and positioning
@@ -104,12 +108,15 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
         const centerX = (width - textWidth) / 2;
         
         page.drawText(processedText, {
-          x: Math.max(pageMargins.left, centerX), // Ensure it doesn't go beyond left margin
+          x: Math.max(pageMargins.left, centerX),
           y: yPosition,
           size: size,
           font: font,
           color: rgb(0, 0, 0),
         });
+        
+        // Always decrement position for titles
+        yPosition -= lineHeight * 1.5;
       } else {
         // Right-align text with proper width constraints
         const words = processedText.split(' ');
@@ -140,26 +147,26 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
         
         // Draw each line with proper RTL positioning
         lines.forEach((line, index) => {
+          // Check for page break before each line
           if (yPosition < pageMargins.bottom + 50) {
             page = pdfDoc.addPage();
             yPosition = height - pageMargins.top;
           }
           
           const lineWidth = font.widthOfTextAtSize(line, size);
-          const xPosition = rightEdge - lineWidth; // Position from right edge minus text width
+          const xPosition = rightEdge - lineWidth;
           
           page.drawText(line, {
-            x: Math.max(pageMargins.left, xPosition), // Ensure it doesn't go beyond left margin
+            x: Math.max(pageMargins.left, xPosition),
             y: yPosition,
             size: size,
             font: font,
             color: rgb(0, 0, 0),
           });
           
-          yPosition -= lineHeight * 1.2;
+          // Consistent line spacing - always decrement after each line
+          yPosition -= lineHeight * (isBold ? 1.3 : 1.2);
         });
-        
-        return; // Skip the standard yPosition adjustment since we handled it above
       }
       
     } catch (e) {
@@ -177,12 +184,15 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
           font: font,
           color: rgb(0.5, 0.5, 0.5),
         });
+        
+        // Always decrement position even for fallback
+        yPosition -= lineHeight * 1.2;
       } catch (e2) {
         console.log('❌ Even fallback failed:', e2);
+        // Still decrement to prevent overlap
+        yPosition -= lineHeight;
       }
     }
-    
-    yPosition -= lineHeight * (isBold ? 1.5 : 1.2);
   };
   
   // Generate and process the contract text
@@ -199,46 +209,37 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   addRTLText(`מספר חוזה: ${contractData.contractNumber || 'לא צוין'}`, 12);
   yPosition -= 15;
   
-  // Process contract content in sections
-  const sections = contractText.split('\n\n'); // Split by paragraph breaks
+  // Process contract content in sections with consistent spacing
+  const sections = contractText.split('\n\n');
   
   sections.forEach((section: string, index: number) => {
-    if (section.trim()) {
+    const trimmedSection = section.trim();
+    if (trimmedSection) {
       // Check if this is a numbered section (starts with number)
-      const isNumberedSection = /^\d+\./.test(section.trim());
+      const isNumberedSection = /^\d+\./.test(trimmedSection);
       
       if (isNumberedSection) {
-        // Add extra spacing before numbered sections
-        yPosition -= 10;
-        addRTLText(section, 12, false, true);
+        // Add spacing before numbered sections (only if not first section)
+        if (index > 0) {
+          yPosition -= 8;
+        }
+        addRTLText(trimmedSection, 12, false, true);
       } else {
-        // Regular paragraph text
-        const lines = section.split('\n');
+        // Regular paragraph text - process line by line
+        const lines = trimmedSection.split('\n');
         lines.forEach((line: string) => {
-          if (line.trim()) {
-            // Handle long lines by breaking them appropriately for RTL
-            if (line.length > 80) {
-              const words = line.split(' ');
-              let currentLine = '';
-              words.forEach((word: string) => {
-                if (currentLine.length + word.length > 80) {
-                  if (currentLine) {
-                    addRTLText(currentLine, fontSize);
-                  }
-                  currentLine = word + ' ';
-                } else {
-                  currentLine += word + ' ';
-                }
-              });
-              if (currentLine) {
-                addRTLText(currentLine, fontSize);
-              }
-            } else {
-              addRTLText(line, fontSize);
-            }
+          const trimmedLine = line.trim();
+          if (trimmedLine) {
+            addRTLText(trimmedLine, fontSize);
+          } else {
+            // Empty line - add small spacing
+            yPosition -= lineHeight * 0.3;
           }
         });
       }
+    } else {
+      // Empty section - add paragraph spacing
+      yPosition -= lineHeight * 0.5;
     }
   });
   
@@ -352,7 +353,10 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
     }
     
     const processedText = processHebrewText(text);
-    if (!processedText) return;
+    if (!processedText) {
+      yPosition -= lineHeight * 0.5;
+      return;
+    }
     
     try {
       // Calculate proper text area and positioning
@@ -372,12 +376,14 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
         const centerX = (width - textWidth) / 2;
         
         page.drawText(processedText, {
-          x: Math.max(pageMargins.left, centerX), // Ensure it doesn't go beyond left margin
+          x: Math.max(pageMargins.left, centerX),
           y: yPosition,
           size: size,
           font: font,
           color: rgb(0, 0, 0),
         });
+        
+        yPosition -= lineHeight * 1.5;
       } else {
         // Right-align text with proper width constraints
         const words = processedText.split(' ');
@@ -396,7 +402,6 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
               lines.push(currentLine);
               currentLine = word;
             } else {
-              // Word is too long, add as is
               lines.push(word);
             }
           }
@@ -414,25 +419,22 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
           }
           
           const lineWidth = font.widthOfTextAtSize(line, size);
-          const xPosition = rightEdge - lineWidth; // Position from right edge minus text width
+          const xPosition = rightEdge - lineWidth;
           
           page.drawText(line, {
-            x: Math.max(pageMargins.left, xPosition), // Ensure it doesn't go beyond left margin
+            x: Math.max(pageMargins.left, xPosition),
             y: yPosition,
             size: size,
             font: font,
             color: rgb(0, 0, 0),
           });
           
-          yPosition -= lineHeight * 1.2;
+          yPosition -= lineHeight * (isBold ? 1.3 : 1.2);
         });
-        
-        return; // Skip the standard yPosition adjustment since we handled it above
       }
       
     } catch (e) {
       console.log('❌ Error rendering RTL text for blob:', e.message);
-      // Fallback with simple positioning
       try {
         const fallbackText = `[Hebrew Text: ${text.length} chars]`;
         const textWidth = font.widthOfTextAtSize(fallbackText, size);
@@ -445,12 +447,13 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
           font: font,
           color: rgb(0.5, 0.5, 0.5),
         });
+        
+        yPosition -= lineHeight * 1.2;
       } catch (e2) {
         console.log('❌ Even fallback failed for blob:', e2);
+        yPosition -= lineHeight;
       }
     }
-    
-    yPosition -= lineHeight * (isBold ? 1.5 : 1.2);
   };
   
   // Generate and process the contract text
@@ -467,46 +470,32 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   addRTLText(`מספר חוזה: ${contractData.contractNumber || 'לא צוין'}`, 12);
   yPosition -= 15;
   
-  // Process contract content in sections
-  const sections = contractText.split('\n\n'); // Split by paragraph breaks
+  // Process contract content in sections with consistent spacing
+  const sections = contractText.split('\n\n');
   
   sections.forEach((section: string, index: number) => {
-    if (section.trim()) {
-      // Check if this is a numbered section (starts with number)
-      const isNumberedSection = /^\d+\./.test(section.trim());
+    const trimmedSection = section.trim();
+    if (trimmedSection) {
+      const isNumberedSection = /^\d+\./.test(trimmedSection);
       
       if (isNumberedSection) {
-        // Add extra spacing before numbered sections
-        yPosition -= 10;
-        addRTLText(section, 12, false, true);
+        if (index > 0) {
+          yPosition -= 8;
+        }
+        addRTLText(trimmedSection, 12, false, true);
       } else {
-        // Regular paragraph text
-        const lines = section.split('\n');
+        const lines = trimmedSection.split('\n');
         lines.forEach((line: string) => {
-          if (line.trim()) {
-            // Handle long lines by breaking them appropriately for RTL
-            if (line.length > 80) {
-              const words = line.split(' ');
-              let currentLine = '';
-              words.forEach((word: string) => {
-                if (currentLine.length + word.length > 80) {
-                  if (currentLine) {
-                    addRTLText(currentLine, fontSize);
-                  }
-                  currentLine = word + ' ';
-                } else {
-                  currentLine += word + ' ';
-                }
-              });
-              if (currentLine) {
-                addRTLText(currentLine, fontSize);
-              }
-            } else {
-              addRTLText(line, fontSize);
-            }
+          const trimmedLine = line.trim();
+          if (trimmedLine) {
+            addRTLText(trimmedLine, fontSize);
+          } else {
+            yPosition -= lineHeight * 0.3;
           }
         });
       }
+    } else {
+      yPosition -= lineHeight * 0.5;
     }
   });
   
