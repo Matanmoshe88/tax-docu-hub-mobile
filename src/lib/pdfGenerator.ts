@@ -228,9 +228,9 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
         pdf.addPage();
       }
       
-      // Convert each page to canvas
+      // Convert each page to canvas with compression settings
       const canvas = await html2canvas(pages[i] as HTMLElement, {
-        scale: 2,
+        scale: 1.5, // Reduced from 2 to 1.5 for smaller file size
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
@@ -246,12 +246,12 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
         }
       });
       
-      // Add to PDF
-      const imgData = canvas.toDataURL('image/png');
+      // Add to PDF with JPEG compression for smaller file size
+      const imgData = canvas.toDataURL('image/jpeg', 0.8); // Use JPEG with 80% quality
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
     }
     
     // Save the PDF
@@ -491,7 +491,7 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
       }
       
       const canvas = await html2canvas(pages[i] as HTMLElement, {
-        scale: 2,
+        scale: 1.5, // Reduced scale for smaller file size
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
@@ -506,11 +506,11 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
         }
       });
       
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 0.8); // JPEG compression
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
     }
     
     document.body.removeChild(container);
