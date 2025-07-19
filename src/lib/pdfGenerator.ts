@@ -11,7 +11,13 @@ async function loadHebrewFont() {
     const fontResponse = await fetch('/fonts/NotoSansHebrew-Regular.ttf');
     if (fontResponse.ok) {
       const fontArrayBuffer = await fontResponse.arrayBuffer();
-      const fontBase64 = btoa(String.fromCharCode(...new Uint8Array(fontArrayBuffer)));
+      // Convert ArrayBuffer to base64
+      const bytes = new Uint8Array(fontArrayBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const fontBase64 = btoa(binary);
       
       // Add Hebrew font to vfs
       pdfMake.vfs['NotoSansHebrew-Regular.ttf'] = fontBase64;
