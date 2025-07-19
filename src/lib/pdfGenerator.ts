@@ -74,7 +74,7 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
     }
   };
 
-  // Helper to add RTL text with proper alignment
+  // Helper to add RTL text with proper margins and positioning
   const addRTLText = (text: string, size: number = fontSize, isTitle: boolean = false, isBold: boolean = false) => {
     if (yPosition < margin + 50) {
       page = pdfDoc.addPage();
@@ -82,33 +82,96 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
     }
     
     const processedText = processHebrewText(text);
-    console.log('📝 Adding RTL text:', processedText.substring(0, 50) + '...');
+    if (!processedText) return;
+    
+    console.log('📝 Adding RTL text with proper margins:', processedText.substring(0, 50) + '...');
     
     try {
-      // Calculate x position for right alignment
-      let xPosition = width - margin;
+      // Calculate proper text area and positioning
+      const pageMargins = {
+        left: margin,
+        right: margin,
+        top: margin,
+        bottom: margin
+      };
+      
+      const textAreaWidth = width - pageMargins.left - pageMargins.right;
+      const rightEdge = width - pageMargins.right;
+      
       if (isTitle) {
         // Center titles
-        xPosition = width / 2;
+        const textWidth = font.widthOfTextAtSize(processedText, size);
+        const centerX = (width - textWidth) / 2;
+        
+        page.drawText(processedText, {
+          x: Math.max(pageMargins.left, centerX), // Ensure it doesn't go beyond left margin
+          y: yPosition,
+          size: size,
+          font: font,
+          color: rgb(0, 0, 0),
+        });
+      } else {
+        // Right-align text with proper width constraints
+        const words = processedText.split(' ');
+        let currentLine = '';
+        let lines = [];
+        
+        // Break text into lines that fit within the text area
+        words.forEach(word => {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const lineWidth = font.widthOfTextAtSize(testLine, size);
+          
+          if (lineWidth <= textAreaWidth) {
+            currentLine = testLine;
+          } else {
+            if (currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              // Word is too long, add as is
+              lines.push(word);
+            }
+          }
+        });
+        
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+        
+        // Draw each line with proper RTL positioning
+        lines.forEach((line, index) => {
+          if (yPosition < pageMargins.bottom + 50) {
+            page = pdfDoc.addPage();
+            yPosition = height - pageMargins.top;
+          }
+          
+          const lineWidth = font.widthOfTextAtSize(line, size);
+          const xPosition = rightEdge - lineWidth; // Position from right edge minus text width
+          
+          page.drawText(line, {
+            x: Math.max(pageMargins.left, xPosition), // Ensure it doesn't go beyond left margin
+            y: yPosition,
+            size: size,
+            font: font,
+            color: rgb(0, 0, 0),
+          });
+          
+          yPosition -= lineHeight * 1.2;
+        });
+        
+        return; // Skip the standard yPosition adjustment since we handled it above
       }
-      
-      page.drawText(processedText, {
-        x: xPosition,
-        y: yPosition,
-        size: size,
-        font: font,
-        color: rgb(0, 0, 0),
-        // For RTL text, we need to position from the right
-        ...(isTitle ? {} : { textAlign: 'right' as any })
-      });
       
     } catch (e) {
       console.log('❌ Error rendering RTL text:', e.message);
-      // Fallback with simple text
+      // Fallback with simple positioning
       try {
         const fallbackText = `[Hebrew Text: ${text.length} chars]`;
+        const textWidth = font.widthOfTextAtSize(fallbackText, size);
+        const xPosition = Math.max(margin, width - margin - textWidth);
+        
         page.drawText(fallbackText, {
-          x: width - margin,
+          x: xPosition,
           y: yPosition,
           size: size,
           font: font,
@@ -281,7 +344,7 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
     }
   };
 
-  // Helper to add RTL text with proper alignment (same as main function)
+  // Helper to add RTL text with proper margins and positioning (same as main function)
   const addRTLText = (text: string, size: number = fontSize, isTitle: boolean = false, isBold: boolean = false) => {
     if (yPosition < margin + 50) {
       page = pdfDoc.addPage();
@@ -289,32 +352,94 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
     }
     
     const processedText = processHebrewText(text);
+    if (!processedText) return;
     
     try {
-      // Calculate x position for right alignment
-      let xPosition = width - margin;
+      // Calculate proper text area and positioning
+      const pageMargins = {
+        left: margin,
+        right: margin,
+        top: margin,
+        bottom: margin
+      };
+      
+      const textAreaWidth = width - pageMargins.left - pageMargins.right;
+      const rightEdge = width - pageMargins.right;
+      
       if (isTitle) {
         // Center titles
-        xPosition = width / 2;
+        const textWidth = font.widthOfTextAtSize(processedText, size);
+        const centerX = (width - textWidth) / 2;
+        
+        page.drawText(processedText, {
+          x: Math.max(pageMargins.left, centerX), // Ensure it doesn't go beyond left margin
+          y: yPosition,
+          size: size,
+          font: font,
+          color: rgb(0, 0, 0),
+        });
+      } else {
+        // Right-align text with proper width constraints
+        const words = processedText.split(' ');
+        let currentLine = '';
+        let lines = [];
+        
+        // Break text into lines that fit within the text area
+        words.forEach(word => {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const lineWidth = font.widthOfTextAtSize(testLine, size);
+          
+          if (lineWidth <= textAreaWidth) {
+            currentLine = testLine;
+          } else {
+            if (currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              // Word is too long, add as is
+              lines.push(word);
+            }
+          }
+        });
+        
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+        
+        // Draw each line with proper RTL positioning
+        lines.forEach((line, index) => {
+          if (yPosition < pageMargins.bottom + 50) {
+            page = pdfDoc.addPage();
+            yPosition = height - pageMargins.top;
+          }
+          
+          const lineWidth = font.widthOfTextAtSize(line, size);
+          const xPosition = rightEdge - lineWidth; // Position from right edge minus text width
+          
+          page.drawText(line, {
+            x: Math.max(pageMargins.left, xPosition), // Ensure it doesn't go beyond left margin
+            y: yPosition,
+            size: size,
+            font: font,
+            color: rgb(0, 0, 0),
+          });
+          
+          yPosition -= lineHeight * 1.2;
+        });
+        
+        return; // Skip the standard yPosition adjustment since we handled it above
       }
-      
-      page.drawText(processedText, {
-        x: xPosition,
-        y: yPosition,
-        size: size,
-        font: font,
-        color: rgb(0, 0, 0),
-        // For RTL text, we need to position from the right
-        ...(isTitle ? {} : { textAlign: 'right' as any })
-      });
       
     } catch (e) {
       console.log('❌ Error rendering RTL text for blob:', e.message);
-      // Fallback with simple text
+      // Fallback with simple positioning
       try {
         const fallbackText = `[Hebrew Text: ${text.length} chars]`;
+        const textWidth = font.widthOfTextAtSize(fallbackText, size);
+        const xPosition = Math.max(margin, width - margin - textWidth);
+        
         page.drawText(fallbackText, {
-          x: width - margin,
+          x: xPosition,
           y: yPosition,
           size: size,
           font: font,
