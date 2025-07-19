@@ -45,16 +45,20 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   
   // Helper function to process Hebrew text with RTL support
   const processHebrewText = (text: string): string => {
-    if (!text) return '';
-    
-    // Clean and process the text for proper RTL display
-    let cleanText = text
-      .replace(/[\u202A\u202B\u202C\u202D\u202E]/g, '') // Remove directional marks
-      .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
-      .replace(/undefined/g, '_______') // Replace undefined with placeholders
-      .trim();
+    // Ensure we have a valid string
+    if (!text || typeof text !== 'string') {
+      console.log('⚠️ Invalid text input:', text, typeof text);
+      return '';
+    }
     
     try {
+      // Clean and process the text for proper RTL display
+      let cleanText = String(text) // Ensure it's a string
+        .replace(/[\u202A\u202B\u202C\u202D\u202E]/g, '') // Remove directional marks
+        .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
+        .replace(/undefined/g, '_______') // Replace undefined with placeholders
+        .trim();
+      
       // Use bidi-js to process Hebrew text with proper RTL handling
       cleanText = bidi(cleanText, { dir: 'rtl' });
       
@@ -63,9 +67,10 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
       
       return cleanText;
     } catch (e) {
-      console.log('⚠️ Bidi processing failed, using original text:', e);
-      // Fallback: manual number fix
-      return cleanText.replace(/:/g, '').replace(/(\d[\d\-\/\.]*\d|\d)/g, '\u202D$1\u202C');
+      console.log('⚠️ Bidi processing failed, using fallback:', e);
+      // Fallback: manual number fix with string conversion
+      const fallbackText = String(text || '');
+      return fallbackText.replace(/:/g, '').replace(/(\d[\d\-\/\.]*\d|\d)/g, '\u202D$1\u202C');
     }
   };
 
@@ -247,16 +252,20 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   
   // Helper function to process Hebrew text with RTL support (same as main function)
   const processHebrewText = (text: string): string => {
-    if (!text) return '';
-    
-    // Clean and process the text for proper RTL display
-    let cleanText = text
-      .replace(/[\u202A\u202B\u202C\u202D\u202E]/g, '') // Remove directional marks
-      .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
-      .replace(/undefined/g, '_______') // Replace undefined with placeholders
-      .trim();
+    // Ensure we have a valid string
+    if (!text || typeof text !== 'string') {
+      console.log('⚠️ Invalid text input for blob:', text, typeof text);
+      return '';
+    }
     
     try {
+      // Clean and process the text for proper RTL display
+      let cleanText = String(text) // Ensure it's a string
+        .replace(/[\u202A\u202B\u202C\u202D\u202E]/g, '') // Remove directional marks
+        .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
+        .replace(/undefined/g, '_______') // Replace undefined with placeholders
+        .trim();
+      
       // Use bidi-js to process Hebrew text with proper RTL handling
       cleanText = bidi(cleanText, { dir: 'rtl' });
       
@@ -265,9 +274,10 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
       
       return cleanText;
     } catch (e) {
-      console.log('⚠️ Bidi processing failed for blob, using original text:', e);
-      // Fallback: manual number fix
-      return cleanText.replace(/:/g, '').replace(/(\d[\d\-\/\.]*\d|\d)/g, '\u202D$1\u202C');
+      console.log('⚠️ Bidi processing failed for blob, using fallback:', e);
+      // Fallback: manual number fix with string conversion
+      const fallbackText = String(text || '');
+      return fallbackText.replace(/:/g, '').replace(/(\d[\d\-\/\.]*\d|\d)/g, '\u202D$1\u202C');
     }
   };
 
