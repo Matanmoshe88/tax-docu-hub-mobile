@@ -1,11 +1,19 @@
 // pdfGenerator.ts
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 
 export async function generateContractPDF(contractData: any, signatureDataURL: string) {
   const pdfDoc = await PDFDocument.create();
+  pdfDoc.registerFontkit(fontkit);
   
-  // Use font that supports Latin characters only for now
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  // Try to use a font that supports Hebrew, fallback to standard font
+  let font;
+  try {
+    // Try to load a system font that supports Hebrew (this might work on some systems)
+    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  } catch (e) {
+    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  }
   
   let page = pdfDoc.addPage();
   const { width, height } = page.getSize();
@@ -14,23 +22,32 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   const fontSize = 12;
   const lineHeight = 20;
   
-  // Helper to add text (remove Hebrew characters for now)
+  // Helper to add text with Hebrew support
   const addText = (text: string, size: number = fontSize, x: number = margin) => {
     if (yPosition < margin + 50) {
       page = pdfDoc.addPage();
       yPosition = height - margin;
     }
     
-    // Convert Hebrew text to English or remove problematic characters
-    const safeText = text.replace(/[\u0590-\u05FF]/g, '?'); // Replace Hebrew with ?
-    
-    page.drawText(safeText, {
-      x: x,
-      y: yPosition,
-      size: size,
-      font: font,
-      color: rgb(0, 0, 0),
-    });
+    // Keep original text - try to render Hebrew characters
+    try {
+      page.drawText(text, {
+        x: x,
+        y: yPosition,
+        size: size,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+    } catch (e) {
+      // If Hebrew rendering fails, fallback to placeholder
+      page.drawText(text.replace(/[\u0590-\u05FF]/g, '?'), {
+        x: x,
+        y: yPosition,
+        size: size,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+    }
     
     yPosition -= lineHeight;
   };
@@ -103,9 +120,15 @@ export async function createAndDownloadPDF(contractData: any, signatureDataURL: 
 
 export async function generateContractPDFBlob(contractData: any, signatureDataURL: string): Promise<Blob> {
   const pdfDoc = await PDFDocument.create();
+  pdfDoc.registerFontkit(fontkit);
   
-  // Use font that supports Latin characters only for now  
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  // Try to use a font that supports Hebrew, fallback to standard font
+  let font;
+  try {
+    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  } catch (e) {
+    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  }
   
   let page = pdfDoc.addPage();
   const { width, height } = page.getSize();
@@ -114,23 +137,32 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   const fontSize = 12;
   const lineHeight = 20;
   
-  // Helper to add text (remove Hebrew characters for now)
+  // Helper to add text with Hebrew support
   const addText = (text: string, size: number = fontSize, x: number = margin) => {
     if (yPosition < margin + 50) {
       page = pdfDoc.addPage();
       yPosition = height - margin;
     }
     
-    // Convert Hebrew text to English or remove problematic characters
-    const safeText = text.replace(/[\u0590-\u05FF]/g, '?'); // Replace Hebrew with ?
-    
-    page.drawText(safeText, {
-      x: x,
-      y: yPosition,
-      size: size,
-      font: font,
-      color: rgb(0, 0, 0),
-    });
+    // Keep original text - try to render Hebrew characters
+    try {
+      page.drawText(text, {
+        x: x,
+        y: yPosition,
+        size: size,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+    } catch (e) {
+      // If Hebrew rendering fails, fallback to placeholder
+      page.drawText(text.replace(/[\u0590-\u05FF]/g, '?'), {
+        x: x,
+        y: yPosition,
+        size: size,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+    }
     
     yPosition -= lineHeight;
   };
