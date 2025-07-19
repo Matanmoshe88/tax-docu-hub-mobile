@@ -6,12 +6,14 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
   
-  // Try to use a font that supports Hebrew, fallback to standard font
+  // Try to load a Hebrew-supporting font
   let font;
   try {
-    // Try to load a system font that supports Hebrew (this might work on some systems)
-    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    // Try to fetch a Hebrew-supporting font from Google Fonts
+    const fontBytes = await fetch('https://fonts.gstatic.com/s/notosans/v36/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyD9A-9a6Vk7.woff2').then(res => res.arrayBuffer());
+    font = await pdfDoc.embedFont(fontBytes);
   } catch (e) {
+    console.log('Failed to load Hebrew font, using Helvetica');
     font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   }
   
@@ -122,11 +124,14 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
   
-  // Try to use a font that supports Hebrew, fallback to standard font
+  // Try to load a Hebrew-supporting font
   let font;
   try {
-    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    // Try to fetch a Hebrew-supporting font from Google Fonts
+    const fontBytes = await fetch('https://fonts.gstatic.com/s/notosans/v36/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyD9A-9a6Vk7.woff2').then(res => res.arrayBuffer());
+    font = await pdfDoc.embedFont(fontBytes);
   } catch (e) {
+    console.log('Failed to load Hebrew font, using Helvetica');
     font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   }
   
