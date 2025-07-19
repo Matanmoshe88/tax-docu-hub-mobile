@@ -1,17 +1,29 @@
 // pdfGenerator.ts
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
+import { generateContractText } from './contractUtils';
 
 export async function generateContractPDF(contractData: any, signatureDataURL: string) {
+  console.log('🎯 Starting PDF generation with data:', contractData);
+  
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
   
-  // Try to use a font that supports Hebrew, fallback to standard font
+  // Load Hebrew font
   let font;
   try {
-    // Try to load a system font that supports Hebrew (this might work on some systems)
-    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    // Try to use Google Fonts to load Hebrew font
+    const fontUrl = 'https://fonts.gstatic.com/s/notosanshebrew/v27/sJoW3LfXjm-LPr_6PjSFWhfXdGvfAOKYNKQ.woff2';
+    const fontResponse = await fetch(fontUrl);
+    if (fontResponse.ok) {
+      const fontBytes = await fontResponse.arrayBuffer();
+      font = await pdfDoc.embedFont(fontBytes);
+      console.log('✅ Hebrew font loaded successfully');
+    } else {
+      throw new Error('Font fetch failed');
+    }
   } catch (e) {
+    console.log('❌ Hebrew font failed, using fallback:', e);
     font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   }
   
@@ -52,38 +64,42 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
     yPosition -= lineHeight;
   };
   
-  // Add content
-  addText('Tax Return Service Agreement', 18, width/2 - 80);
-  yPosition -= 20;
+  // Generate the actual contract text
+  const contractText = generateContractText(contractData);
+  console.log('📄 Generated contract text length:', contractText.length);
   
-  addText(`Contract Number: ${contractData.contractNumber}`);
-  addText(`Date: ${new Date().toLocaleDateString()}`);
-  yPosition -= 20;
+  // Add contract content
+  addText('הסכם שירות להחזרי מס', 18, width/2 - 100);
+  yPosition -= 30;
   
-  addText('Between:');
-  addText(`${contractData.company.name} ID: ${contractData.company.id}`);
-  addText(contractData.company.address);
-  yPosition -= 20;
-  
-  addText('And:');
-  addText(`${contractData.client.name} ID: ${contractData.client.id}`);
-  yPosition -= 20;
-  
-  // Add contract sections
-  contractData.sections.forEach((section: any) => {
-    addText(section.title, 14);
-    const words = section.content.split(' ');
-    let line = '';
-    words.forEach((word: string) => {
-      if (line.length + word.length > 80) {
-        addText(line);
-        line = word + ' ';
+  // Split contract text into lines and add to PDF
+  const lines = contractText.split('\n');
+  lines.forEach((line: string) => {
+    if (line.trim()) {
+      // Handle long lines by wrapping them
+      if (line.length > 80) {
+        const words = line.split(' ');
+        let currentLine = '';
+        words.forEach((word: string) => {
+          if (currentLine.length + word.length > 80) {
+            if (currentLine) {
+              addText(currentLine, fontSize, margin);
+            }
+            currentLine = word + ' ';
+          } else {
+            currentLine += word + ' ';
+          }
+        });
+        if (currentLine) {
+          addText(currentLine, fontSize, margin);
+        }
       } else {
-        line += word + ' ';
+        addText(line, fontSize, margin);
       }
-    });
-    if (line) addText(line);
-    yPosition -= 10;
+    } else {
+      // Empty line for spacing
+      yPosition -= lineHeight / 2;
+    }
   });
   
   // Add signature if exists
@@ -119,14 +135,26 @@ export async function createAndDownloadPDF(contractData: any, signatureDataURL: 
 }
 
 export async function generateContractPDFBlob(contractData: any, signatureDataURL: string): Promise<Blob> {
+  console.log('🎯 Starting PDF blob generation with data:', contractData);
+  
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
   
-  // Try to use a font that supports Hebrew, fallback to standard font
+  // Load Hebrew font
   let font;
   try {
-    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    // Try to use Google Fonts to load Hebrew font
+    const fontUrl = 'https://fonts.gstatic.com/s/notosanshebrew/v27/sJoW3LfXjm-LPr_6PjSFWhfXdGvfAOKYNKQ.woff2';
+    const fontResponse = await fetch(fontUrl);
+    if (fontResponse.ok) {
+      const fontBytes = await fontResponse.arrayBuffer();
+      font = await pdfDoc.embedFont(fontBytes);
+      console.log('✅ Hebrew font loaded successfully for blob');
+    } else {
+      throw new Error('Font fetch failed');
+    }
   } catch (e) {
+    console.log('❌ Hebrew font failed for blob, using fallback:', e);
     font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   }
   
@@ -167,38 +195,42 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
     yPosition -= lineHeight;
   };
   
-  // Add content
-  addText('Tax Return Service Agreement', 18, width/2 - 80);
-  yPosition -= 20;
+  // Generate the actual contract text
+  const contractText = generateContractText(contractData);
+  console.log('📄 Generated contract text for blob, length:', contractText.length);
   
-  addText(`Contract Number: ${contractData.contractNumber}`);
-  addText(`Date: ${new Date().toLocaleDateString()}`);
-  yPosition -= 20;
+  // Add contract content
+  addText('הסכם שירות להחזרי מס', 18, width/2 - 100);
+  yPosition -= 30;
   
-  addText('Between:');
-  addText(`${contractData.company.name} ID: ${contractData.company.id}`);
-  addText(contractData.company.address);
-  yPosition -= 20;
-  
-  addText('And:');
-  addText(`${contractData.client.name} ID: ${contractData.client.id}`);
-  yPosition -= 20;
-  
-  // Add contract sections
-  contractData.sections.forEach((section: any) => {
-    addText(section.title, 14);
-    const words = section.content.split(' ');
-    let line = '';
-    words.forEach((word: string) => {
-      if (line.length + word.length > 80) {
-        addText(line);
-        line = word + ' ';
+  // Split contract text into lines and add to PDF
+  const lines = contractText.split('\n');
+  lines.forEach((line: string) => {
+    if (line.trim()) {
+      // Handle long lines by wrapping them
+      if (line.length > 80) {
+        const words = line.split(' ');
+        let currentLine = '';
+        words.forEach((word: string) => {
+          if (currentLine.length + word.length > 80) {
+            if (currentLine) {
+              addText(currentLine, fontSize, margin);
+            }
+            currentLine = word + ' ';
+          } else {
+            currentLine += word + ' ';
+          }
+        });
+        if (currentLine) {
+          addText(currentLine, fontSize, margin);
+        }
       } else {
-        line += word + ' ';
+        addText(line, fontSize, margin);
       }
-    });
-    if (line) addText(line);
-    yPosition -= 10;
+    } else {
+      // Empty line for spacing
+      yPosition -= lineHeight / 2;
+    }
   });
   
   // Add signature if exists
