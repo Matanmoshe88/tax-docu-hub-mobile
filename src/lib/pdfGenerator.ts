@@ -4,44 +4,34 @@ import fontkit from '@pdf-lib/fontkit';
 import { generateContractText } from './contractUtils';
 
 export async function generateContractPDF(contractData: any, signatureDataURL: string) {
-  console.log('🎯 Starting PDF generation with data:', contractData);
+  console.log('🎯 Starting PDF generation with Hebrew support');
   
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
   
-  
-  // Load Noto Sans Hebrew font with proper Unicode support
+  // Load Noto Sans Hebrew font from public folder
   let font;
   try {
-    // Use direct CDN link for Noto Sans Hebrew
-    const fontUrl = 'https://fonts.gstatic.com/s/notosanshebrew/v43/sJoD3LfXjm-LPr_6PjSFWhfXdAmYYCm4WDaKJW5j.ttf';
-    console.log('🔄 Attempting to load Noto Sans Hebrew font...');
+    console.log('🔄 Loading Noto Sans Hebrew font...');
+    const fontResponse = await fetch('/fonts/NotoSansHebrew-Regular.ttf');
     
-    const fontResponse = await fetch(fontUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/octet-stream',
-      }
-    });
-    
-    if (fontResponse.ok) {
-      const fontBytes = await fontResponse.arrayBuffer();
-      console.log('📦 Font bytes received:', fontBytes.byteLength);
-      font = await pdfDoc.embedFont(fontBytes);
-      console.log('✅ Noto Sans Hebrew font loaded successfully');
-    } else {
-      console.log('❌ Font response not OK:', fontResponse.status);
-      throw new Error(`Font fetch failed with status: ${fontResponse.status}`);
+    if (!fontResponse.ok) {
+      throw new Error(`Font fetch failed: ${fontResponse.status} ${fontResponse.statusText}`);
     }
+    
+    const fontBytes = await fontResponse.arrayBuffer();
+    console.log('📦 Font bytes loaded:', fontBytes.byteLength, 'bytes');
+    
+    font = await pdfDoc.embedFont(fontBytes);
+    console.log('✅ Noto Sans Hebrew font embedded successfully');
+    
   } catch (e) {
-    console.log('❌ Noto Sans Hebrew font failed, error:', e);
-    // Use Times-Roman as fallback which has better Unicode support than Helvetica
+    console.error('❌ Failed to load Hebrew font:', e);
+    console.log('📝 Falling back to Times-Roman');
     try {
       font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-      console.log('📝 Using Times-Roman fallback font');
     } catch (e2) {
       font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      console.log('📝 Using Helvetica fallback font');
     }
   }
   
@@ -169,44 +159,34 @@ export async function createAndDownloadPDF(contractData: any, signatureDataURL: 
 }
 
 export async function generateContractPDFBlob(contractData: any, signatureDataURL: string): Promise<Blob> {
-  console.log('🎯 Starting PDF blob generation with data:', contractData);
+  console.log('🎯 Starting PDF blob generation with Hebrew support');
   
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
   
-  
-  // Load Noto Sans Hebrew font with proper Unicode support
+  // Load Noto Sans Hebrew font from public folder
   let font;
   try {
-    // Use direct CDN link for Noto Sans Hebrew
-    const fontUrl = 'https://fonts.gstatic.com/s/notosanshebrew/v43/sJoD3LfXjm-LPr_6PjSFWhfXdAmYYCm4WDaKJW5j.ttf';
-    console.log('🔄 Attempting to load Noto Sans Hebrew font for blob...');
+    console.log('🔄 Loading Noto Sans Hebrew font for blob...');
+    const fontResponse = await fetch('/fonts/NotoSansHebrew-Regular.ttf');
     
-    const fontResponse = await fetch(fontUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/octet-stream',
-      }
-    });
-    
-    if (fontResponse.ok) {
-      const fontBytes = await fontResponse.arrayBuffer();
-      console.log('📦 Font bytes received for blob:', fontBytes.byteLength);
-      font = await pdfDoc.embedFont(fontBytes);
-      console.log('✅ Noto Sans Hebrew font loaded successfully for blob');
-    } else {
-      console.log('❌ Font response not OK for blob:', fontResponse.status);
-      throw new Error(`Font fetch failed with status: ${fontResponse.status}`);
+    if (!fontResponse.ok) {
+      throw new Error(`Font fetch failed: ${fontResponse.status} ${fontResponse.statusText}`);
     }
+    
+    const fontBytes = await fontResponse.arrayBuffer();
+    console.log('📦 Font bytes loaded for blob:', fontBytes.byteLength, 'bytes');
+    
+    font = await pdfDoc.embedFont(fontBytes);
+    console.log('✅ Noto Sans Hebrew font embedded successfully for blob');
+    
   } catch (e) {
-    console.log('❌ Noto Sans Hebrew font failed for blob, error:', e);
-    // Use Times-Roman as fallback which has better Unicode support than Helvetica
+    console.error('❌ Failed to load Hebrew font for blob:', e);
+    console.log('📝 Falling back to Times-Roman for blob');
     try {
       font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-      console.log('📝 Using Times-Roman fallback font for blob');
     } catch (e2) {
       font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      console.log('📝 Using Helvetica fallback font for blob');
     }
   }
   
