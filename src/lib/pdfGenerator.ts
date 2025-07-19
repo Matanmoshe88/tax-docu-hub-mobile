@@ -155,13 +155,9 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   };
   
   try {
-    console.log('Generating PDF with contract data:', contractData);
-    console.log('HTML content length:', htmlContent.length);
-    
-    const pdfBlob = await html2pdf().set(options).from(container).outputPdf('blob');
+    await html2pdf().set(options).from(container).save();
     document.body.removeChild(container);
-    console.log('PDF generated successfully, blob size:', pdfBlob.size);
-    return pdfBlob;
+    return new Blob([], { type: 'application/pdf' });
   } catch (error) {
     console.error('PDF generation failed:', error);
     document.body.removeChild(container);
@@ -207,12 +203,12 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
         <div class="contract-subtitle english">Tax Return Service Agreement</div>
       </div>
       
-        <div class="contract-details">
+      <div class="contract-details">
         <div class="detail-row">
-          <strong>מספר חוזה:</strong> ${contractData.contractNumber || 'לא צוין'}
+          <strong>מספר חוזה:</strong> ${contractData.contractNumber}
         </div>
         <div class="detail-row english">
-          <strong>Contract Number:</strong> ${contractData.contractNumber || 'N/A'}
+          <strong>Contract Number:</strong> ${contractData.contractNumber}
         </div>
         <div class="detail-row">
           <strong>תאריך:</strong> ${new Date().toLocaleDateString('he-IL')}
@@ -225,38 +221,25 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
       <div class="parties">
         <div class="party">
           <div class="party-title">בין:</div>
-          <div>${contractData.company?.name || 'שם החברה'}</div>
-          <div>ת.ז: ${contractData.company?.id || 'לא צוין'}</div>
-          <div>${contractData.company?.address || 'כתובת החברה'}</div>
+          <div>${contractData.company.name}</div>
+          <div>ת.ז: ${contractData.company.id}</div>
+          <div>${contractData.company.address}</div>
         </div>
         
         <div class="party">
           <div class="party-title">לבין:</div>
-          <div>${contractData.client?.name || 'שם הלקוח'}</div>
-          <div>ת.ז: ${contractData.client?.id || 'לא צוין'}</div>
+          <div>${contractData.client.name}</div>
+          <div>ת.ז: ${contractData.client.id}</div>
         </div>
       </div>
       
       <div class="sections">
-        ${contractData.sections?.map((section: any) => `
+        ${contractData.sections.map((section: any) => `
           <div class="section">
-            <div class="section-title">${section.title || 'כותרת סעיף'}</div>
-            <div class="section-content">${section.content || 'תוכן הסעיף'}</div>
+            <div class="section-title">${section.title}</div>
+            <div class="section-content">${section.content}</div>
           </div>
-        `).join('') || `
-          <div class="section">
-            <div class="section-title">סעיף 1 - השירות</div>
-            <div class="section-content">החברה מתחייבת לבצע החזרי מס עבור הלקוח</div>
-          </div>
-          <div class="section">
-            <div class="section-title">סעיף 2 - התשלום</div>
-            <div class="section-content">שיעור העמלה יקבע בהתאם לסכום ההחזר</div>
-          </div>
-          <div class="section">
-            <div class="section-title">סעיף 3 - תנאים</div>
-            <div class="section-content">הלקוח מתחייב לספק את כל המסמכים הנדרשים</div>
-          </div>
-        `}
+        `).join('')}
       </div>
       
       ${signatureDataURL ? `
@@ -283,18 +266,11 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   };
   
   try {
-    console.log('Generating Hebrew PDF with contract data:', contractData);
-    console.log('HTML content length:', htmlContent.length);
-    
-    // Wait for fonts to load
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
     const pdfBlob = await html2pdf().set(options).from(container).outputPdf('blob');
     document.body.removeChild(container);
-    console.log('Hebrew PDF generated successfully, blob size:', pdfBlob.size);
     return pdfBlob;
   } catch (error) {
-    console.error('Hebrew PDF generation failed:', error);
+    console.error('PDF generation failed:', error);
     document.body.removeChild(container);
     throw error;
   }
