@@ -9,22 +9,28 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
   
-  // Load Hebrew font
+  
+  // Load Hebrew font with proper Unicode support
   let font;
   try {
-    // Try to use Google Fonts to load Hebrew font
-    const fontUrl = 'https://fonts.gstatic.com/s/notosanshebrew/v27/sJoW3LfXjm-LPr_6PjSFWhfXdGvfAOKYNKQ.woff2';
+    // Use a different approach - load TTF font directly from Google Fonts
+    const fontUrl = 'https://fonts.gstatic.com/s/notosanshebrew/v27/sJoD3LfXjm-LPr_6PjSFWhfXdAmYYCm4WDaKJW5j.ttf';
     const fontResponse = await fetch(fontUrl);
     if (fontResponse.ok) {
       const fontBytes = await fontResponse.arrayBuffer();
       font = await pdfDoc.embedFont(fontBytes);
-      console.log('✅ Hebrew font loaded successfully');
+      console.log('✅ Hebrew TTF font loaded successfully');
     } else {
       throw new Error('Font fetch failed');
     }
   } catch (e) {
-    console.log('❌ Hebrew font failed, using fallback:', e);
-    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    console.log('❌ Hebrew font failed, trying alternative method:', e);
+    try {
+      // Fallback: try to embed standard font and handle Hebrew differently
+      font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+    } catch (e2) {
+      font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    }
   }
   
   let page = pdfDoc.addPage();
@@ -34,16 +40,24 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   const fontSize = 12;
   const lineHeight = 20;
   
-  // Helper to add text with Hebrew support
+  // Helper to add text with Hebrew support and encoding fixes
   const addText = (text: string, size: number = fontSize, x: number = margin) => {
     if (yPosition < margin + 50) {
       page = pdfDoc.addPage();
       yPosition = height - margin;
     }
     
-    // Keep original text - try to render Hebrew characters
+    // Clean and prepare Hebrew text
     try {
-      page.drawText(text, {
+      // Remove or replace problematic characters that can't be encoded
+      const cleanText = text
+        .replace(/[\u202A\u202B\u202C\u202D\u202E]/g, '') // Remove directional marks
+        .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
+        .trim();
+      
+      console.log('Adding text:', cleanText.substring(0, 50) + '...');
+      
+      page.drawText(cleanText, {
         x: x,
         y: yPosition,
         size: size,
@@ -51,14 +65,21 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
         color: rgb(0, 0, 0),
       });
     } catch (e) {
-      // If Hebrew rendering fails, fallback to placeholder
-      page.drawText(text.replace(/[\u0590-\u05FF]/g, '?'), {
-        x: x,
-        y: yPosition,
-        size: size,
-        font: font,
-        color: rgb(0, 0, 0),
-      });
+      console.log('❌ Text rendering error for:', text.substring(0, 30), e);
+      // Fallback: replace Hebrew characters with transliteration or skip
+      try {
+        const fallbackText = text.replace(/[\u0590-\u05FF]/g, '???');
+        page.drawText(fallbackText, {
+          x: x,
+          y: yPosition,
+          size: size,
+          font: font,
+          color: rgb(0, 0, 0),
+        });
+      } catch (e2) {
+        console.log('❌ Even fallback failed:', e2);
+        // Skip this text
+      }
     }
     
     yPosition -= lineHeight;
@@ -140,22 +161,28 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
   
-  // Load Hebrew font
+  
+  // Load Hebrew font with proper Unicode support
   let font;
   try {
-    // Try to use Google Fonts to load Hebrew font
-    const fontUrl = 'https://fonts.gstatic.com/s/notosanshebrew/v27/sJoW3LfXjm-LPr_6PjSFWhfXdGvfAOKYNKQ.woff2';
+    // Use a different approach - load TTF font directly from Google Fonts
+    const fontUrl = 'https://fonts.gstatic.com/s/notosanshebrew/v27/sJoD3LfXjm-LPr_6PjSFWhfXdAmYYCm4WDaKJW5j.ttf';
     const fontResponse = await fetch(fontUrl);
     if (fontResponse.ok) {
       const fontBytes = await fontResponse.arrayBuffer();
       font = await pdfDoc.embedFont(fontBytes);
-      console.log('✅ Hebrew font loaded successfully for blob');
+      console.log('✅ Hebrew TTF font loaded successfully for blob');
     } else {
       throw new Error('Font fetch failed');
     }
   } catch (e) {
-    console.log('❌ Hebrew font failed for blob, using fallback:', e);
-    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    console.log('❌ Hebrew font failed for blob, trying alternative method:', e);
+    try {
+      // Fallback: try to embed standard font and handle Hebrew differently
+      font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+    } catch (e2) {
+      font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    }
   }
   
   let page = pdfDoc.addPage();
@@ -165,16 +192,22 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   const fontSize = 12;
   const lineHeight = 20;
   
-  // Helper to add text with Hebrew support
+  // Helper to add text with Hebrew support and encoding fixes
   const addText = (text: string, size: number = fontSize, x: number = margin) => {
     if (yPosition < margin + 50) {
       page = pdfDoc.addPage();
       yPosition = height - margin;
     }
     
-    // Keep original text - try to render Hebrew characters
+    // Clean and prepare Hebrew text
     try {
-      page.drawText(text, {
+      // Remove or replace problematic characters that can't be encoded
+      const cleanText = text
+        .replace(/[\u202A\u202B\u202C\u202D\u202E]/g, '') // Remove directional marks
+        .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
+        .trim();
+      
+      page.drawText(cleanText, {
         x: x,
         y: yPosition,
         size: size,
@@ -182,14 +215,21 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
         color: rgb(0, 0, 0),
       });
     } catch (e) {
-      // If Hebrew rendering fails, fallback to placeholder
-      page.drawText(text.replace(/[\u0590-\u05FF]/g, '?'), {
-        x: x,
-        y: yPosition,
-        size: size,
-        font: font,
-        color: rgb(0, 0, 0),
-      });
+      console.log('❌ Text rendering error for blob:', text.substring(0, 30), e);
+      // Fallback: replace Hebrew characters with transliteration or skip
+      try {
+        const fallbackText = text.replace(/[\u0590-\u05FF]/g, '???');
+        page.drawText(fallbackText, {
+          x: x,
+          y: yPosition,
+          size: size,
+          font: font,
+          color: rgb(0, 0, 0),
+        });
+      } catch (e2) {
+        console.log('❌ Even fallback failed for blob:', e2);
+        // Skip this text
+      }
     }
     
     yPosition -= lineHeight;
