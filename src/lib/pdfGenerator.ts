@@ -3,7 +3,7 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { generateContractText } from './contractUtils';
 
 // Configure pdfMake with fonts
-pdfMake.vfs = pdfFonts.pdfMake.vfs;
+pdfMake.vfs = pdfFonts.vfs;
 
 // Use only Roboto font which has basic Hebrew support
 pdfMake.fonts = {
