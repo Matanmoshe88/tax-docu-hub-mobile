@@ -15,7 +15,7 @@ import {
   Download
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { generateContractPDF } from '@/lib/pdfGenerator';
+import { createAndDownloadPDF } from '@/lib/pdfGenerator';
 import { supabase } from '@/integrations/supabase/client';
 import { useSalesforceData } from '@/hooks/useSalesforceData';
 
@@ -342,13 +342,27 @@ export const DocumentsPage: React.FC = () => {
         commissionRate: '25%',
       };
 
+      // Transform data to match new API structure
       const contractData = {
-        leadId: recordId || '12345',
-        signature: signature || undefined,
-        clientData,
+        contractNumber: recordId || '12345',
+        company: {
+          name: 'קוויק טקס (ג\'י.אי.אמ גלובל)',
+          id: '513218453',
+          address: 'רחוב הרצל 123, תל אביב'
+        },
+        client: {
+          name: `${clientData.firstName} ${clientData.lastName}`,
+          id: clientData.idNumber,
+          address: clientData.address
+        },
+        sections: [
+          { title: 'סעיף 1 - השירות', content: 'החברה מתחייבת לבצע החזרי מס עבור הלקוח' },
+          { title: 'סעיף 2 - התשלום', content: `שיעור העמלה: ${clientData.commissionRate}` }
+        ],
+        debtAmount: '10,000'
       };
 
-      await generateContractPDF(contractData);
+      await createAndDownloadPDF(contractData, signature || '');
       
       toast({
         title: "PDF נוצר בהצלחה",
