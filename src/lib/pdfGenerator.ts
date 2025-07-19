@@ -1,12 +1,10 @@
 // pdfGenerator.ts
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import fontkit from '@pdf-lib/fontkit';
 
 export async function generateContractPDF(contractData: any, signatureDataURL: string) {
   const pdfDoc = await PDFDocument.create();
-  pdfDoc.registerFontkit(fontkit);
   
-  // Use standard font with Unicode support
+  // Use font that supports Latin characters only for now
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   
   let page = pdfDoc.addPage();
@@ -16,14 +14,17 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   const fontSize = 12;
   const lineHeight = 20;
   
-  // Helper to add text
+  // Helper to add text (remove Hebrew characters for now)
   const addText = (text: string, size: number = fontSize, x: number = margin) => {
     if (yPosition < margin + 50) {
       page = pdfDoc.addPage();
       yPosition = height - margin;
     }
     
-    page.drawText(text, {
+    // Convert Hebrew text to English or remove problematic characters
+    const safeText = text.replace(/[\u0590-\u05FF]/g, '?'); // Replace Hebrew with ?
+    
+    page.drawText(safeText, {
       x: x,
       y: yPosition,
       size: size,
@@ -35,20 +36,20 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   };
   
   // Add content
-  addText('הסכם שירות להחזרי מס', 18, width/2 - 80);
+  addText('Tax Return Service Agreement', 18, width/2 - 80);
   yPosition -= 20;
   
-  addText(`מספר חוזה: ${contractData.contractNumber}`);
-  addText(`תאריך: ${new Date().toLocaleDateString('he-IL')}`);
+  addText(`Contract Number: ${contractData.contractNumber}`);
+  addText(`Date: ${new Date().toLocaleDateString()}`);
   yPosition -= 20;
   
-  addText('בין:');
-  addText(`${contractData.company.name} ח.פ ${contractData.company.id}`);
+  addText('Between:');
+  addText(`${contractData.company.name} ID: ${contractData.company.id}`);
   addText(contractData.company.address);
   yPosition -= 20;
   
-  addText('לבין:');
-  addText(`${contractData.client.name} ת.ז ${contractData.client.id}`);
+  addText('And:');
+  addText(`${contractData.client.name} ID: ${contractData.client.id}`);
   yPosition -= 20;
   
   // Add contract sections
@@ -102,9 +103,8 @@ export async function createAndDownloadPDF(contractData: any, signatureDataURL: 
 
 export async function generateContractPDFBlob(contractData: any, signatureDataURL: string): Promise<Blob> {
   const pdfDoc = await PDFDocument.create();
-  pdfDoc.registerFontkit(fontkit);
   
-  // Use standard font with Unicode support
+  // Use font that supports Latin characters only for now  
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   
   let page = pdfDoc.addPage();
@@ -114,14 +114,17 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   const fontSize = 12;
   const lineHeight = 20;
   
-  // Helper to add text
+  // Helper to add text (remove Hebrew characters for now)
   const addText = (text: string, size: number = fontSize, x: number = margin) => {
     if (yPosition < margin + 50) {
       page = pdfDoc.addPage();
       yPosition = height - margin;
     }
     
-    page.drawText(text, {
+    // Convert Hebrew text to English or remove problematic characters
+    const safeText = text.replace(/[\u0590-\u05FF]/g, '?'); // Replace Hebrew with ?
+    
+    page.drawText(safeText, {
       x: x,
       y: yPosition,
       size: size,
@@ -133,20 +136,20 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   };
   
   // Add content
-  addText('הסכם שירות להחזרי מס', 18, width/2 - 80);
+  addText('Tax Return Service Agreement', 18, width/2 - 80);
   yPosition -= 20;
   
-  addText(`מספר חוזה: ${contractData.contractNumber}`);
-  addText(`תאריך: ${new Date().toLocaleDateString('he-IL')}`);
+  addText(`Contract Number: ${contractData.contractNumber}`);
+  addText(`Date: ${new Date().toLocaleDateString()}`);
   yPosition -= 20;
   
-  addText('בין:');
-  addText(`${contractData.company.name} ח.פ ${contractData.company.id}`);
+  addText('Between:');
+  addText(`${contractData.company.name} ID: ${contractData.company.id}`);
   addText(contractData.company.address);
   yPosition -= 20;
   
-  addText('לבין:');
-  addText(`${contractData.client.name} ת.ז ${contractData.client.id}`);
+  addText('And:');
+  addText(`${contractData.client.name} ID: ${contractData.client.id}`);
   yPosition -= 20;
   
   // Add contract sections
