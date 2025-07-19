@@ -1,244 +1,188 @@
-// pdfGenerator.ts - Improved version without html2canvas
-import jsPDF from 'jspdf';
-import 'jspdf-autotable'; // For better table support if needed
-
-// Hebrew font support will be added later
-// import './hebrewFont'; // This should contain the font data
+// pdfGenerator.ts
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 
 export async function generateContractPDF(contractData: any, signatureDataURL: string) {
-  // Initialize PDF with compression
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-    compress: true,
-    putOnlyUsedFonts: true
-  });
-
-  // Use Arial for now (will add Hebrew font later)
-  try {
-    doc.setFont('HebrewFont');
-  } catch (e) {
-    // Fallback to Arial if Hebrew font not available
-    doc.setFont('Arial', 'normal');
-  }
+  const pdfDoc = await PDFDocument.create();
+  pdfDoc.registerFontkit(fontkit);
   
-  // Enable RTL (try/catch for compatibility)
-  try {
-    doc.setR2L(true);
-  } catch (e) {
-    console.warn('RTL not supported in this jsPDF version');
-  }
-  // Constants
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
-  const lineHeight = 7;
-  const contentWidth = pageWidth - (margin * 2);
+  // Use standard font with Unicode support
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   
-  let yPosition = margin;
+  let page = pdfDoc.addPage();
+  const { width, height } = page.getSize();
+  const margin = 50;
+  let yPosition = height - margin;
+  const fontSize = 12;
+  const lineHeight = 20;
   
-  // Helper function to add text with automatic page breaks
-  const addText = (text: string, fontSize: number = 12, bold: boolean = false) => {
-    doc.setFontSize(fontSize);
-    doc.setFont(undefined, bold ? 'bold' : 'normal');
+  // Helper to add text
+  const addText = (text: string, size: number = fontSize, x: number = margin) => {
+    if (yPosition < margin + 50) {
+      page = pdfDoc.addPage();
+      yPosition = height - margin;
+    }
     
-    const lines = doc.splitTextToSize(text, contentWidth);
-    
-    lines.forEach((line: string) => {
-      if (yPosition + lineHeight > pageHeight - margin) {
-        doc.addPage();
-        yPosition = margin;
-      }
-      doc.text(line, pageWidth - margin, yPosition, { align: 'right' });
-      yPosition += lineHeight;
+    page.drawText(text, {
+      x: x,
+      y: yPosition,
+      size: size,
+      font: font,
+      color: rgb(0, 0, 0),
     });
+    
+    yPosition -= lineHeight;
   };
   
-  // 1. Add Header
-  doc.setFontSize(20);
-  doc.text('הסכם שירות להחזרי מס', pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 15;
+  // Add content
+  addText('הסכם שירות להחזרי מס', 18, width/2 - 80);
+  yPosition -= 20;
   
-  // Add date and contract number
-  doc.setFontSize(10);
-  doc.text(`מספר הסכם: ${contractData.contractNumber}`, pageWidth - margin, yPosition, { align: 'right' });
-  yPosition += 5;
-  doc.text(`תאריך: ${new Date().toLocaleDateString('he-IL')}`, pageWidth - margin, yPosition, { align: 'right' });
-  yPosition += 15;
+  addText(`מספר חוזה: ${contractData.contractNumber}`);
+  addText(`תאריך: ${new Date().toLocaleDateString('he-IL')}`);
+  yPosition -= 20;
   
-  // 2. Add Parties Section
-  addText('בין:', 14, true);
-  yPosition += 5;
-  addText(`${contractData.company.name} ח.פ ${contractData.company.id}`, 12);
-  addText(`${contractData.company.address}`, 12);
-  addText('(להלן: "החברה")', 12);
-  yPosition += 10;
+  addText('בין:');
+  addText(`${contractData.company.name} ח.פ ${contractData.company.id}`);
+  addText(contractData.company.address);
+  yPosition -= 20;
   
-  addText('לבין:', 14, true);
-  yPosition += 5;
-  addText(`${contractData.client.name} ת.ז ${contractData.client.id}`, 12);
-  addText(`${contractData.client.address}`, 12);
-  addText('(להלן: "הלקוח")', 12);
-  yPosition += 15;
+  addText('לבין:');
+  addText(`${contractData.client.name} ת.ז ${contractData.client.id}`);
+  yPosition -= 20;
   
-  // 3. Add Contract Sections
-  contractData.sections.forEach((section: any, index: number) => {
-    // Section title
-    addText(`${index + 1}. ${section.title}`, 14, true);
-    yPosition += 3;
-    
-    // Section content
-    addText(section.content, 12);
-    yPosition += 10;
+  // Add contract sections
+  contractData.sections.forEach((section: any) => {
+    addText(section.title, 14);
+    const words = section.content.split(' ');
+    let line = '';
+    words.forEach((word: string) => {
+      if (line.length + word.length > 80) {
+        addText(line);
+        line = word + ' ';
+      } else {
+        line += word + ' ';
+      }
+    });
+    if (line) addText(line);
+    yPosition -= 10;
   });
   
-  // 4. Add Signature Section (if signature exists)
+  // Add signature if exists
   if (signatureDataURL) {
-    // Ensure we have space for signature
-    if (yPosition + 50 > pageHeight - margin) {
-      doc.addPage();
-      yPosition = margin;
+    try {
+      const signatureImage = await pdfDoc.embedPng(signatureDataURL);
+      const dims = signatureImage.scale(0.3);
+      page.drawImage(signatureImage, {
+        x: margin,
+        y: yPosition - dims.height,
+        width: dims.width,
+        height: dims.height,
+      });
+    } catch (e) {
+      console.log('Signature embedding failed');
     }
-    
-    yPosition += 10;
-    addText('חתימות:', 14, true);
-    yPosition += 10;
-    
-    // Add signature image (compressed)
-    const signatureWidth = 50;
-    const signatureHeight = 25;
-    
-    // Compress signature before adding
-    const compressedSignature = await compressSignatureImage(signatureDataURL);
-    
-    doc.addImage(
-      compressedSignature,
-      'JPEG',
-      margin,
-      yPosition,
-      signatureWidth,
-      signatureHeight
-    );
-    
-    doc.text('חתימת הלקוח', margin + signatureWidth / 2, yPosition + signatureHeight + 5, { align: 'center' });
   }
   
-  // 5. Add שטר חוב on separate page
-  doc.addPage();
-  yPosition = margin;
+  // Save PDF
+  const pdfBytes = await pdfDoc.save();
+  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `contract_${contractData.client.id}_${Date.now()}.pdf`;
+  link.click();
   
-  // Add debt note header
-  doc.setFontSize(18);
-  doc.text('שטר חוב', pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 15;
-  
-  // Add debt note content
-  addText(`אני הח"מ ${contractData.client.name} ת.ז ${contractData.client.id}`, 12);
-  yPosition += 5;
-  addText(`מתחייב בזה לשלם לפקודת ${contractData.company.name}`, 12);
-  yPosition += 5;
-  addText(`סך של ${contractData.debtAmount} ש"ח`, 14, true);
-  yPosition += 10;
-  addText('וזאת במקרה של ביטול ההסכם מצידי או אי עמידה בתנאי ההסכם.', 12);
-  
-  // Add signature area for debt note
-  if (signatureDataURL) {
-    yPosition += 20;
-    const compressedSignature = await compressSignatureImage(signatureDataURL);
-    doc.addImage(
-      compressedSignature,
-      'JPEG',
-      margin,
-      yPosition,
-      50,
-      25
-    );
-  }
-  
-  // Return the PDF
-  return doc;
+  return blob;
 }
 
-// Helper function to compress signature
-async function compressSignatureImage(dataURL: string): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      // Set smaller dimensions for signature
-      const maxWidth = 200;
-      const maxHeight = 100;
-      
-      let width = img.width;
-      let height = img.height;
-      
-      // Calculate aspect ratio
-      if (width > maxWidth) {
-        height = (maxWidth / width) * height;
-        width = maxWidth;
-      }
-      if (height > maxHeight) {
-        width = (maxHeight / height) * width;
-        height = maxHeight;
-      }
-      
-      canvas.width = width;
-      canvas.height = height;
-      
-      // Draw with white background (for JPEG)
-      ctx!.fillStyle = 'white';
-      ctx!.fillRect(0, 0, width, height);
-      ctx!.drawImage(img, 0, 0, width, height);
-      
-      // Return compressed JPEG
-      resolve(canvas.toDataURL('image/jpeg', 0.6));
-    };
-    img.src = dataURL;
-  });
-}
-
-// Function to generate PDF and return blob (for storage upload)
-export async function generateContractPDFBlob(contractData: any, signatureDataURL: string): Promise<Blob> {
-  try {
-    const pdf = await generateContractPDF(contractData, signatureDataURL);
-    
-    // Check file size
-    const pdfOutput = pdf.output('blob');
-    console.log('PDF size:', (pdfOutput.size / 1024).toFixed(2), 'KB');
-    
-    if (pdfOutput.size > 500000) {
-      console.warn('PDF exceeds 500KB, consider further optimization');
-    }
-    
-    return pdfOutput;
-  } catch (error) {
-    console.error('PDF generation error:', error);
-    throw error;
-  }
-}
-
-// Function to generate and download PDF (for direct download)
 export async function createAndDownloadPDF(contractData: any, signatureDataURL: string) {
-  try {
-    const pdf = await generateContractPDF(contractData, signatureDataURL);
-    
-    // Check file size
-    const pdfOutput = pdf.output('blob');
-    console.log('PDF size:', (pdfOutput.size / 1024).toFixed(2), 'KB');
-    
-    if (pdfOutput.size > 500000) {
-      console.warn('PDF exceeds 500KB, consider further optimization');
+  return await generateContractPDF(contractData, signatureDataURL);
+}
+
+export async function generateContractPDFBlob(contractData: any, signatureDataURL: string): Promise<Blob> {
+  const pdfDoc = await PDFDocument.create();
+  pdfDoc.registerFontkit(fontkit);
+  
+  // Use standard font with Unicode support
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  
+  let page = pdfDoc.addPage();
+  const { width, height } = page.getSize();
+  const margin = 50;
+  let yPosition = height - margin;
+  const fontSize = 12;
+  const lineHeight = 20;
+  
+  // Helper to add text
+  const addText = (text: string, size: number = fontSize, x: number = margin) => {
+    if (yPosition < margin + 50) {
+      page = pdfDoc.addPage();
+      yPosition = height - margin;
     }
     
-    // Save the PDF
-    pdf.save(`contract_${contractData.client.id}_${Date.now()}.pdf`);
+    page.drawText(text, {
+      x: x,
+      y: yPosition,
+      size: size,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
     
-    return pdfOutput;
-  } catch (error) {
-    console.error('PDF generation error:', error);
-    throw error;
+    yPosition -= lineHeight;
+  };
+  
+  // Add content
+  addText('הסכם שירות להחזרי מס', 18, width/2 - 80);
+  yPosition -= 20;
+  
+  addText(`מספר חוזה: ${contractData.contractNumber}`);
+  addText(`תאריך: ${new Date().toLocaleDateString('he-IL')}`);
+  yPosition -= 20;
+  
+  addText('בין:');
+  addText(`${contractData.company.name} ח.פ ${contractData.company.id}`);
+  addText(contractData.company.address);
+  yPosition -= 20;
+  
+  addText('לבין:');
+  addText(`${contractData.client.name} ת.ז ${contractData.client.id}`);
+  yPosition -= 20;
+  
+  // Add contract sections
+  contractData.sections.forEach((section: any) => {
+    addText(section.title, 14);
+    const words = section.content.split(' ');
+    let line = '';
+    words.forEach((word: string) => {
+      if (line.length + word.length > 80) {
+        addText(line);
+        line = word + ' ';
+      } else {
+        line += word + ' ';
+      }
+    });
+    if (line) addText(line);
+    yPosition -= 10;
+  });
+  
+  // Add signature if exists
+  if (signatureDataURL) {
+    try {
+      const signatureImage = await pdfDoc.embedPng(signatureDataURL);
+      const dims = signatureImage.scale(0.3);
+      page.drawImage(signatureImage, {
+        x: margin,
+        y: yPosition - dims.height,
+        width: dims.width,
+        height: dims.height,
+      });
+    } catch (e) {
+      console.log('Signature embedding failed');
+    }
   }
+  
+  // Return PDF as blob for storage
+  const pdfBytes = await pdfDoc.save();
+  return new Blob([pdfBytes], { type: 'application/pdf' });
 }
