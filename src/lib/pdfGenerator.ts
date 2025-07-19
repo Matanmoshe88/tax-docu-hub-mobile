@@ -10,26 +10,38 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   pdfDoc.registerFontkit(fontkit);
   
   
-  // Load Hebrew font with proper Unicode support
+  // Load Noto Sans Hebrew font with proper Unicode support
   let font;
   try {
-    // Use a different approach - load TTF font directly from Google Fonts
-    const fontUrl = 'https://fonts.gstatic.com/s/notosanshebrew/v27/sJoD3LfXjm-LPr_6PjSFWhfXdAmYYCm4WDaKJW5j.ttf';
-    const fontResponse = await fetch(fontUrl);
+    // Use direct CDN link for Noto Sans Hebrew
+    const fontUrl = 'https://fonts.gstatic.com/s/notosanshebrew/v43/sJoD3LfXjm-LPr_6PjSFWhfXdAmYYCm4WDaKJW5j.ttf';
+    console.log('🔄 Attempting to load Noto Sans Hebrew font...');
+    
+    const fontResponse = await fetch(fontUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/octet-stream',
+      }
+    });
+    
     if (fontResponse.ok) {
       const fontBytes = await fontResponse.arrayBuffer();
+      console.log('📦 Font bytes received:', fontBytes.byteLength);
       font = await pdfDoc.embedFont(fontBytes);
-      console.log('✅ Hebrew TTF font loaded successfully');
+      console.log('✅ Noto Sans Hebrew font loaded successfully');
     } else {
-      throw new Error('Font fetch failed');
+      console.log('❌ Font response not OK:', fontResponse.status);
+      throw new Error(`Font fetch failed with status: ${fontResponse.status}`);
     }
   } catch (e) {
-    console.log('❌ Hebrew font failed, trying alternative method:', e);
+    console.log('❌ Noto Sans Hebrew font failed, error:', e);
+    // Use Times-Roman as fallback which has better Unicode support than Helvetica
     try {
-      // Fallback: try to embed standard font and handle Hebrew differently
       font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+      console.log('📝 Using Times-Roman fallback font');
     } catch (e2) {
       font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      console.log('📝 Using Helvetica fallback font');
     }
   }
   
@@ -40,22 +52,21 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   const fontSize = 12;
   const lineHeight = 20;
   
-  // Helper to add text with Hebrew support and encoding fixes
+  // Helper to add text with Noto Sans Hebrew support
   const addText = (text: string, size: number = fontSize, x: number = margin) => {
     if (yPosition < margin + 50) {
       page = pdfDoc.addPage();
       yPosition = height - margin;
     }
     
-    // Clean and prepare Hebrew text
     try {
-      // Remove or replace problematic characters that can't be encoded
+      // Clean text but preserve Hebrew characters
       const cleanText = text
         .replace(/[\u202A\u202B\u202C\u202D\u202E]/g, '') // Remove directional marks
         .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
         .trim();
       
-      console.log('Adding text:', cleanText.substring(0, 50) + '...');
+      console.log('📝 Adding text with Noto Sans Hebrew:', cleanText.substring(0, 30) + '...');
       
       page.drawText(cleanText, {
         x: x,
@@ -64,21 +75,23 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
         font: font,
         color: rgb(0, 0, 0),
       });
+      
     } catch (e) {
-      console.log('❌ Text rendering error for:', text.substring(0, 30), e);
-      // Fallback: replace Hebrew characters with transliteration or skip
+      console.log('❌ Error rendering text:', text.substring(0, 30), 'Error:', e.message);
+      
+      // If we can't render with the Hebrew font, there might be an encoding issue
+      // Try with a simple transliteration as last resort
       try {
-        const fallbackText = text.replace(/[\u0590-\u05FF]/g, '???');
-        page.drawText(fallbackText, {
+        const englishText = `[Hebrew Text: ${text.length} characters]`;
+        page.drawText(englishText, {
           x: x,
           y: yPosition,
           size: size,
           font: font,
-          color: rgb(0, 0, 0),
+          color: rgb(0.5, 0.5, 0.5), // Gray color to indicate this is a fallback
         });
       } catch (e2) {
         console.log('❌ Even fallback failed:', e2);
-        // Skip this text
       }
     }
     
@@ -162,26 +175,38 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   pdfDoc.registerFontkit(fontkit);
   
   
-  // Load Hebrew font with proper Unicode support
+  // Load Noto Sans Hebrew font with proper Unicode support
   let font;
   try {
-    // Use a different approach - load TTF font directly from Google Fonts
-    const fontUrl = 'https://fonts.gstatic.com/s/notosanshebrew/v27/sJoD3LfXjm-LPr_6PjSFWhfXdAmYYCm4WDaKJW5j.ttf';
-    const fontResponse = await fetch(fontUrl);
+    // Use direct CDN link for Noto Sans Hebrew
+    const fontUrl = 'https://fonts.gstatic.com/s/notosanshebrew/v43/sJoD3LfXjm-LPr_6PjSFWhfXdAmYYCm4WDaKJW5j.ttf';
+    console.log('🔄 Attempting to load Noto Sans Hebrew font for blob...');
+    
+    const fontResponse = await fetch(fontUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/octet-stream',
+      }
+    });
+    
     if (fontResponse.ok) {
       const fontBytes = await fontResponse.arrayBuffer();
+      console.log('📦 Font bytes received for blob:', fontBytes.byteLength);
       font = await pdfDoc.embedFont(fontBytes);
-      console.log('✅ Hebrew TTF font loaded successfully for blob');
+      console.log('✅ Noto Sans Hebrew font loaded successfully for blob');
     } else {
-      throw new Error('Font fetch failed');
+      console.log('❌ Font response not OK for blob:', fontResponse.status);
+      throw new Error(`Font fetch failed with status: ${fontResponse.status}`);
     }
   } catch (e) {
-    console.log('❌ Hebrew font failed for blob, trying alternative method:', e);
+    console.log('❌ Noto Sans Hebrew font failed for blob, error:', e);
+    // Use Times-Roman as fallback which has better Unicode support than Helvetica
     try {
-      // Fallback: try to embed standard font and handle Hebrew differently
       font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+      console.log('📝 Using Times-Roman fallback font for blob');
     } catch (e2) {
       font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      console.log('📝 Using Helvetica fallback font for blob');
     }
   }
   
@@ -192,16 +217,15 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   const fontSize = 12;
   const lineHeight = 20;
   
-  // Helper to add text with Hebrew support and encoding fixes
+  // Helper to add text with Noto Sans Hebrew support
   const addText = (text: string, size: number = fontSize, x: number = margin) => {
     if (yPosition < margin + 50) {
       page = pdfDoc.addPage();
       yPosition = height - margin;
     }
     
-    // Clean and prepare Hebrew text
     try {
-      // Remove or replace problematic characters that can't be encoded
+      // Clean text but preserve Hebrew characters
       const cleanText = text
         .replace(/[\u202A\u202B\u202C\u202D\u202E]/g, '') // Remove directional marks
         .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
@@ -214,21 +238,23 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
         font: font,
         color: rgb(0, 0, 0),
       });
+      
     } catch (e) {
-      console.log('❌ Text rendering error for blob:', text.substring(0, 30), e);
-      // Fallback: replace Hebrew characters with transliteration or skip
+      console.log('❌ Error rendering text for blob:', text.substring(0, 30), 'Error:', e.message);
+      
+      // If we can't render with the Hebrew font, there might be an encoding issue
+      // Try with a simple transliteration as last resort
       try {
-        const fallbackText = text.replace(/[\u0590-\u05FF]/g, '???');
-        page.drawText(fallbackText, {
+        const englishText = `[Hebrew Text: ${text.length} characters]`;
+        page.drawText(englishText, {
           x: x,
           y: yPosition,
           size: size,
           font: font,
-          color: rgb(0, 0, 0),
+          color: rgb(0.5, 0.5, 0.5), // Gray color to indicate this is a fallback
         });
       } catch (e2) {
         console.log('❌ Even fallback failed for blob:', e2);
-        // Skip this text
       }
     }
     
