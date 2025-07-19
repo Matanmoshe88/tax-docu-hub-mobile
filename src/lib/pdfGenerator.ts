@@ -17,6 +17,9 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
     contractNumber: contractData.contractNumber || ''
   };
   
+  // Log the data to debug
+  console.log('Client Data being used:', clientData);
+  
   const contractText = generateContractText(clientData);
   const currentDate = new Date().toLocaleDateString('he-IL');
   
@@ -28,11 +31,12 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
     left: -9999px;
     top: 0;
     width: 794px;
-    padding: 60px;
+    min-height: 1123px;
+    padding: 40px 60px;
     background: white;
     font-family: Arial, 'Arial Hebrew', David, sans-serif;
-    font-size: 12pt;
-    line-height: 1.6;
+    font-size: 14px;
+    line-height: 1.8;
     direction: rtl;
     text-align: right;
     color: #000;
@@ -52,28 +56,31 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
       
       .contract-page {
         width: 100%;
-        min-height: 100%;
+        min-height: 1050px;
         background: white;
         position: relative;
+        page-break-after: auto;
+        page-break-inside: avoid;
       }
       
       .contract-header {
         text-align: center;
-        font-size: 20pt;
+        font-size: 24px;
         font-weight: bold;
-        margin-bottom: 30px;
+        margin-bottom: 40px;
         color: #000;
       }
       
       .contract-info {
-        display: table;
+        display: flex;
+        justify-content: space-between;
         width: 100%;
-        margin-bottom: 30px;
+        margin-bottom: 40px;
+        font-size: 14px;
       }
       
       .contract-info > div {
-        display: table-cell;
-        width: 50%;
+        flex: 1;
       }
       
       .contract-info > div:first-child {
@@ -90,60 +97,61 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
       
       .party-section {
         font-weight: bold;
-        font-size: 13pt;
-        margin: 15px 0;
+        font-size: 16px;
+        margin: 20px 0;
         color: #000;
+        line-height: 1.8;
       }
       
       .numbered-section {
         font-weight: bold;
-        margin: 20px 0 10px 0;
+        margin: 25px 0 15px 0;
         color: #000;
+        font-size: 14px;
+        line-height: 1.8;
       }
       
       .promissory-title {
         text-align: center;
-        font-size: 18pt;
+        font-size: 22px;
         font-weight: bold;
-        margin: 40px 0 30px 0;
-        page-break-before: always;
+        margin: 50px 0 40px 0;
         color: #000;
       }
       
       .signature-section {
-        display: table;
+        display: flex;
+        justify-content: space-between;
         width: 100%;
-        margin-top: 60px;
+        margin-top: 80px;
         page-break-inside: avoid;
       }
       
       .signature-box {
-        display: table-cell;
-        width: 50%;
+        flex: 1;
         text-align: right;
-        vertical-align: top;
-      }
-      
-      .signature-box:last-child {
-        padding-right: 50px;
       }
       
       .signature-line {
         border-bottom: 2px solid black;
         width: 200px;
-        margin-top: 15px;
+        margin-top: 20px;
         display: inline-block;
       }
       
       .contract-body {
         text-align: right;
         direction: rtl;
+        width: 100%;
       }
       
       p {
-        margin: 12px 0;
+        margin: 15px 0;
         text-align: right;
         color: #000;
+        font-size: 14px;
+        line-height: 1.8;
+        word-spacing: 2px;
       }
       
       /* Ensure text doesn't break awkwardly */
@@ -168,24 +176,35 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   
   // Process contract lines
   const lines = contractText.split('\n').slice(1); // Skip title
+  let currentPageContent = '';
+  let pageNumber = 1;
   let inPromissoryNote = false;
   
-  lines.forEach((line) => {
+  lines.forEach((line, index) => {
     const trimmedLine = line.trim();
     
     if (!trimmedLine) {
-      htmlContent += '<br/>';
+      currentPageContent += '<br/>';
     } else if (trimmedLine === 'שטר חוב') {
-      htmlContent += `</div><div class="contract-page"><div class="promissory-title">שטר חוב</div>`;
+      // Close current page and start new page for promissory note
+      if (pageNumber === 1) {
+        htmlContent += currentPageContent + '</div>';
+        currentPageContent = '<div class="contract-page" style="page-break-before: always;">';
+      }
+      currentPageContent += `<div class="promissory-title">שטר חוב</div>`;
       inPromissoryNote = true;
+      pageNumber++;
     } else if (/^\d+\./.test(trimmedLine)) {
-      htmlContent += `<p class="numbered-section keep-together">${trimmedLine}</p>`;
+      currentPageContent += `<p class="numbered-section">${trimmedLine}</p>`;
     } else if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
-      htmlContent += `<p class="party-section">${trimmedLine}</p>`;
+      currentPageContent += `<p class="party-section">${trimmedLine}</p>`;
     } else {
-      htmlContent += `<p>${trimmedLine}</p>`;
+      currentPageContent += `<p>${trimmedLine}</p>`;
     }
   });
+  
+  // Add remaining content
+  htmlContent += currentPageContent;
   
   // Add signature section
   const signatureHTML = `
@@ -228,26 +247,31 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
         pdf.addPage();
       }
       
-      // Convert each page to canvas with compression settings
+      // Convert each page to canvas with better settings
       const canvas = await html2canvas(pages[i] as HTMLElement, {
-        scale: 1.5, // Reduced from 2 to 1.5 for smaller file size
+        scale: 2, // Higher scale for better quality
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
         windowWidth: 794,
         windowHeight: 1123,
+        scrollY: 0,
+        scrollX: 0,
         onclone: (clonedDoc) => {
           // Ensure Hebrew text is properly displayed in cloned document
           const clonedContainer = clonedDoc.getElementById('pdf-container');
           if (clonedContainer) {
             clonedContainer.style.direction = 'rtl';
             clonedContainer.style.textAlign = 'right';
+            // Force render all content
+            clonedContainer.style.position = 'relative';
+            clonedContainer.style.left = '0';
           }
         }
       });
       
-      // Add to PDF with JPEG compression for smaller file size
-      const imgData = canvas.toDataURL('image/jpeg', 0.8); // Use JPEG with 80% quality
+      // Add to PDF with better compression
+      const imgData = canvas.toDataURL('image/jpeg', 0.85); // Slightly higher quality
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
