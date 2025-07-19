@@ -1,482 +1,436 @@
-// pdfGenerator.ts
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import fontkit from '@pdf-lib/fontkit';
+import * as pdfMake from 'pdfmake/build/pdfmake';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { generateContractText } from './contractUtils';
 
-export async function generateContractPDF(contractData: any, signatureDataURL: string) {
- console.log('🎯 Starting PDF generation with Hebrew support');
- 
- const pdfDoc = await PDFDocument.create();
- pdfDoc.registerFontkit(fontkit);
- 
- // Load Hebrew font
- let font;
- try {
-   console.log('🔄 Loading Noto Sans Hebrew font...');
-   const fontResponse = await fetch('/fonts/NotoSansHebrew-Regular.ttf');
-   
-   if (!fontResponse.ok) {
-     throw new Error(`Font fetch failed: ${fontResponse.status} ${fontResponse.statusText}`);
-   }
-   
-   const fontBytes = await fontResponse.arrayBuffer();
-   font = await pdfDoc.embedFont(fontBytes);
-   console.log('✅ Noto Sans Hebrew font embedded successfully');
-   
- } catch (e) {
-   console.error('❌ Failed to load Hebrew font:', e);
-   font = await pdfDoc.embedFont(StandardFonts.Helvetica);
- }
- 
- let page = pdfDoc.addPage();
- const { width, height } = page.getSize();
- const margin = 50;
- let yPosition = height - margin;
- const fontSize = 12;
- const lineHeight = fontSize * 1.8;
- 
- // Process Hebrew text without using bidi-js (which causes the colon issue)
- const processHebrewText = (text: string): string => {
-   if (!text || typeof text !== 'string') {
-     return '';
-   }
-   
-   // Replace undefined values
-   let processedText = text.replace(/undefined/g, '_________');
-   
-   // Preserve numbers by wrapping them in strong LTR marks
-   processedText = processedText
-     // Year ranges (e.g., 2018-2023)
-     .replace(/(\d{4}-\d{4})/g, '\u202D$1\u202C')
-     // Phone numbers and IDs
-     .replace(/(\d{9,10})/g, '\u202D$1\u202C')
-     // Zip codes and PO boxes
-     .replace(/(\d{4,6})/g, '\u202D$1\u202C')
-     // Percentages
-     .replace(/(\d+\.?\d*%)/g, '\u202D$1\u202C')
-     // Money amounts
-     .replace(/(\d+)\s*(₪)/g, '\u202D$1\u202C $2')
-     // Hours (48 שעות)
-     .replace(/(\d+)\s*(שעות|ימים|שנים)/g, '\u202D$1\u202C $2')
-     // Section numbers
-     .replace(/^(\d+)\./gm, '\u202D$1\u202C.')
-     // Any remaining numbers
-     .replace(/(\d+)/g, '\u202D$1\u202C');
-   
-   return processedText;
- };
+// Configure pdfMake with default fonts
+pdfMake.vfs = pdfFonts.pdfMake.vfs;
 
- // Helper to add RTL text
- const addRTLText = (text: string, size: number = fontSize, isTitle: boolean = false, isBold: boolean = false) => {
-   // Check for page break
-   if (yPosition < margin + 50) {
-     page = pdfDoc.addPage();
-     yPosition = height - margin;
-   }
-   
-   const processedText = processHebrewText(text);
-   
-   if (!processedText || processedText.trim() === '') {
-     yPosition -= lineHeight * 0.5;
-     return;
-   }
-   
-   try {
-     const textAreaWidth = width - (margin * 2);
-     const rightEdge = width - margin;
-     
-     if (isTitle) {
-       // Center titles
-       const textWidth = font.widthOfTextAtSize(processedText, size);
-       const centerX = (width - textWidth) / 2;
-       
-       page.drawText(processedText, {
-         x: centerX,
-         y: yPosition,
-         size: size,
-         font: font,
-         color: rgb(0, 0, 0),
-       });
-       
-       yPosition -= size * 2.5;
-     } else {
-       // For regular text, handle line wrapping
-       const words = processedText.split(' ');
-       let lines: string[] = [];
-       let currentLine = '';
-       
-       for (const word of words) {
-         const testLine = currentLine ? `${currentLine} ${word}` : word;
-         const testWidth = font.widthOfTextAtSize(testLine, size);
-         
-         if (testWidth <= textAreaWidth && testLine.length < 120) {
-           currentLine = testLine;
-         } else {
-           if (currentLine) {
-             lines.push(currentLine);
-           }
-           currentLine = word;
-         }
-       }
-       
-       if (currentLine) {
-         lines.push(currentLine);
-       }
-       
-       // If no line breaks needed
-       if (lines.length === 0) {
-         lines = [processedText];
-       }
-       
-       // Draw each line
-       lines.forEach((line) => {
-         // Check page break before each line
-         if (yPosition < margin + 30) {
-           page = pdfDoc.addPage();
-           yPosition = height - margin;
-         }
-         
-         const lineWidth = font.widthOfTextAtSize(line, size);
-         const xPosition = rightEdge - lineWidth;
-         
-         page.drawText(line, {
-           x: Math.max(margin, xPosition),
-           y: yPosition,
-           size: size,
-           font: font,
-           color: rgb(0, 0, 0),
-         });
-         
-         // Consistent line spacing
-         yPosition -= size * 1.8;
-       });
-       
-       // Add extra space after paragraphs
-       if (lines.length > 1 || isBold) {
-         yPosition -= size * 0.5;
-       }
-     }
-   } catch (e) {
-     console.error('❌ Error rendering text:', e);
-     yPosition -= lineHeight;
-   }
- };
- 
- // Generate contract text
- const contractText = generateContractText(contractData);
- 
- // Add title
- addRTLText('הסכם שירות להחזרי מס', 18, true, true);
- 
- // Add date and contract number
- const currentDate = new Date().toLocaleDateString('he-IL');
- addRTLText(`תאריך: ${currentDate}`, 12);
- addRTLText(`מספר חוזה: ${contractData.contractNumber || '___________'}`, 12);
- 
- // Add extra space after header
- yPosition -= 10;
- 
- // Process contract content line by line
- const lines = contractText.split('\n');
- 
- lines.forEach((line: string, index: number) => {
-   const trimmedLine = line.trim();
-   
-   // Skip the title line we already added
-   if (index === 0 && trimmedLine.includes('הסכם שירות להחזרי מס')) {
-     return;
-   }
-   
-   if (!trimmedLine) {
-     // Empty line - add paragraph spacing
-     yPosition -= lineHeight * 0.5;
-   } else if (/^\d+\./.test(trimmedLine)) {
-     // Numbered section - add extra space before (except first)
-     if (index > 0) {
-       yPosition -= lineHeight * 0.3;
-     }
-     addRTLText(trimmedLine, fontSize, false, true);
-   } else if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
-     // Party sections - slightly larger
-     addRTLText(trimmedLine, fontSize + 1, false, true);
-   } else if (trimmedLine.startsWith('הואיל')) {
-     // Whereas clauses
-     yPosition -= lineHeight * 0.2;
-     addRTLText(trimmedLine, fontSize);
-   } else if (trimmedLine === 'שטר חוב') {
-     // Promissory note title
-     yPosition -= lineHeight;
-     addRTLText(trimmedLine, 16, true, true);
-   } else {
-     // Regular text
-     addRTLText(trimmedLine, fontSize);
-   }
- });
- 
- // Add signature section with proper spacing
- yPosition -= 30;
- 
- // Add signature image if provided
- if (signatureDataURL) {
-   try {
-     // Check if we need a new page for signature
-     if (yPosition < 100) {
-       page = pdfDoc.addPage();
-       yPosition = height - margin;
-     }
-     
-     const signatureImage = await pdfDoc.embedPng(signatureDataURL);
-     const dims = signatureImage.scale(0.3);
-     
-     // Position signature on the right side
-     page.drawImage(signatureImage, {
-       x: width - margin - dims.width,
-       y: yPosition - dims.height - 10,
-       width: dims.width,
-       height: dims.height,
-     });
-   } catch (e) {
-     console.error('Signature embedding failed:', e);
-   }
- }
- 
- // Save PDF
- const pdfBytes = await pdfDoc.save();
- const blob = new Blob([pdfBytes], { type: 'application/pdf' });
- const url = URL.createObjectURL(blob);
- const link = document.createElement('a');
- link.href = url;
- link.download = `contract_${contractData.client?.id || contractData.idNumber || 'client'}_${Date.now()}.pdf`;
- link.click();
- 
- return blob;
+// Load Hebrew font dynamically
+async function loadHebrewFont() {
+  try {
+    const fontResponse = await fetch('/fonts/NotoSansHebrew-Regular.ttf');
+    if (fontResponse.ok) {
+      const fontArrayBuffer = await fontResponse.arrayBuffer();
+      const fontBase64 = btoa(String.fromCharCode(...new Uint8Array(fontArrayBuffer)));
+      
+      // Add Hebrew font to vfs
+      pdfMake.vfs['NotoSansHebrew-Regular.ttf'] = fontBase64;
+      
+      // Configure fonts
+      pdfMake.fonts = {
+        NotoSansHebrew: {
+          normal: 'NotoSansHebrew-Regular.ttf',
+          bold: 'NotoSansHebrew-Regular.ttf', // Use regular for bold until we get bold font
+          italics: 'NotoSansHebrew-Regular.ttf',
+          bolditalics: 'NotoSansHebrew-Regular.ttf'
+        },
+        Roboto: {
+          normal: 'Roboto-Regular.ttf',
+          bold: 'Roboto-Medium.ttf',
+          italics: 'Roboto-Italic.ttf',
+          bolditalics: 'Roboto-MediumItalic.ttf'
+        }
+      };
+      
+      console.log('✅ Hebrew font loaded successfully');
+      return true;
+    }
+  } catch (error) {
+    console.error('❌ Failed to load Hebrew font:', error);
+  }
+  
+  // Fallback to Roboto
+  pdfMake.fonts = {
+    Roboto: {
+      normal: 'Roboto-Regular.ttf',
+      bold: 'Roboto-Medium.ttf',
+      italics: 'Roboto-Italic.ttf',
+      bolditalics: 'Roboto-MediumItalic.ttf'
+    }
+  };
+  
+  return false;
+}
+
+// Helper function to process Hebrew text
+function processHebrewText(text: string): string {
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
+  
+  // Replace undefined values
+  let processedText = text.replace(/undefined/g, '_________');
+  
+  // Numbers in Hebrew context should be displayed normally in pdfmake
+  // No need for bidi-js workarounds
+  return processedText;
+}
+
+// Helper function to create content blocks
+function createContentBlock(text: string, style: string = 'body'): any {
+  const processedText = processHebrewText(text);
+  
+  return {
+    text: processedText,
+    style: style
+  };
+}
+
+export async function generateContractPDF(contractData: any, signatureDataURL: string) {
+  console.log('🎯 Starting PDF generation with pdfMake and Hebrew support');
+  
+  // Load Hebrew font
+  const hebrewFontLoaded = await loadHebrewFont();
+  const fontFamily = hebrewFontLoaded ? 'NotoSansHebrew' : 'Roboto';
+  
+  const contractText = generateContractText(contractData);
+  const lines = contractText.split('\n');
+  
+  // Current date
+  const currentDate = new Date().toLocaleDateString('he-IL');
+  
+  // Document definition
+  const docDefinition = {
+    pageSize: 'A4',
+    pageMargins: [40, 50, 40, 50],
+    
+    // Default style for all content
+    defaultStyle: {
+      font: fontFamily,
+      fontSize: 11,
+      alignment: 'right',
+      direction: 'rtl'
+    },
+    
+    // Custom styles
+    styles: {
+      header: {
+        fontSize: 18,
+        bold: true,
+        alignment: 'center',
+        margin: [0, 0, 0, 20]
+      },
+      subheader: {
+        fontSize: 14,
+        bold: true,
+        alignment: 'right',
+        margin: [0, 10, 0, 5]
+      },
+      body: {
+        fontSize: 11,
+        alignment: 'right',
+        lineHeight: 1.5,
+        margin: [0, 0, 0, 8]
+      },
+      parties: {
+        fontSize: 12,
+        bold: true,
+        alignment: 'right',
+        margin: [0, 5, 0, 5]
+      },
+      numbered: {
+        fontSize: 11,
+        bold: true,
+        alignment: 'right',
+        margin: [0, 8, 0, 3]
+      },
+      promissoryTitle: {
+        fontSize: 16,
+        bold: true,
+        alignment: 'center',
+        margin: [0, 20, 0, 10]
+      }
+    },
+    
+    content: []
+  };
+
+  // Build content array
+  const content: any[] = [];
+  
+  // Title
+  content.push(createContentBlock('הסכם שירות להחזרי מס', 'header'));
+  
+  // Date and contract number
+  content.push({
+    columns: [
+      { text: processHebrewText(`תאריך: ${currentDate}`), width: '*', alignment: 'right' },
+      { text: processHebrewText(`מספר חוזה: ${contractData.contractNumber || '___________'}`), width: '*', alignment: 'right' }
+    ],
+    margin: [0, 0, 0, 20]
+  });
+  
+  // Process contract content line by line
+  lines.forEach((line: string, index: number) => {
+    const trimmedLine = line.trim();
+    
+    // Skip the title line we already added
+    if (index === 0 && trimmedLine.includes('הסכם שירות להחזרי מס')) {
+      return;
+    }
+    
+    if (!trimmedLine) {
+      // Empty line - add space
+      content.push({ text: '', margin: [0, 5, 0, 0] });
+    } else if (/^\d+\./.test(trimmedLine)) {
+      // Numbered section
+      content.push(createContentBlock(trimmedLine, 'numbered'));
+    } else if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
+      // Party sections
+      content.push(createContentBlock(trimmedLine, 'parties'));
+    } else if (trimmedLine.startsWith('הואיל')) {
+      // Whereas clauses
+      content.push(createContentBlock(trimmedLine, 'body'));
+    } else if (trimmedLine === 'שטר חוב') {
+      // Promissory note title
+      content.push(createContentBlock(trimmedLine, 'promissoryTitle'));
+    } else {
+      // Regular text
+      content.push(createContentBlock(trimmedLine, 'body'));
+    }
+  });
+  
+  // Add signature section
+  content.push({ text: '', margin: [0, 30, 0, 0] }); // Space before signatures
+  
+  if (signatureDataURL) {
+    content.push({
+      columns: [
+        {
+          stack: [
+            { text: processHebrewText('חתימת הלקוח:'), style: 'body' },
+            {
+              image: signatureDataURL,
+              width: 150,
+              height: 75,
+              margin: [0, 10, 0, 0]
+            }
+          ],
+          width: '50%'
+        },
+        {
+          stack: [
+            { text: processHebrewText('תאריך:'), style: 'body' },
+            { text: processHebrewText(currentDate), margin: [0, 20, 0, 0] }
+          ],
+          width: '50%'
+        }
+      ]
+    });
+  } else {
+    content.push({
+      columns: [
+        {
+          stack: [
+            { text: processHebrewText('חתימת הלקוח:'), style: 'body' },
+            { text: '_______________________', margin: [0, 20, 0, 0] }
+          ],
+          width: '50%'
+        },
+        {
+          stack: [
+            { text: processHebrewText('תאריך:'), style: 'body' },
+            { text: '_______________________', margin: [0, 20, 0, 0] }
+          ],
+          width: '50%'
+        }
+      ]
+    });
+  }
+  
+  docDefinition.content = content;
+  
+  // Generate and download PDF
+  try {
+    const pdfDocGenerator = pdfMake.createPdf(docDefinition);
+    
+    return new Promise<Blob>((resolve, reject) => {
+      pdfDocGenerator.getBlob((blob: Blob) => {
+        // Create download link
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `contract_${contractData.client?.id || contractData.idNumber || 'client'}_${Date.now()}.pdf`;
+        link.click();
+        
+        console.log('✅ PDF generated and downloaded successfully');
+        resolve(blob);
+      });
+    });
+  } catch (error) {
+    console.error('❌ PDF generation failed:', error);
+    throw error;
+  }
 }
 
 export async function createAndDownloadPDF(contractData: any, signatureDataURL: string) {
- return await generateContractPDF(contractData, signatureDataURL);
+  return await generateContractPDF(contractData, signatureDataURL);
 }
 
 export async function generateContractPDFBlob(contractData: any, signatureDataURL: string): Promise<Blob> {
- console.log('🎯 Starting PDF blob generation with Hebrew support');
- 
- const pdfDoc = await PDFDocument.create();
- pdfDoc.registerFontkit(fontkit);
- 
- // Load Hebrew font
- let font;
- try {
-   console.log('🔄 Loading Noto Sans Hebrew font for blob...');
-   const fontResponse = await fetch('/fonts/NotoSansHebrew-Regular.ttf');
-   
-   if (!fontResponse.ok) {
-     throw new Error(`Font fetch failed: ${fontResponse.status} ${fontResponse.statusText}`);
-   }
-   
-   const fontBytes = await fontResponse.arrayBuffer();
-   font = await pdfDoc.embedFont(fontBytes);
-   console.log('✅ Noto Sans Hebrew font embedded successfully for blob');
-   
- } catch (e) {
-   console.error('❌ Failed to load Hebrew font for blob:', e);
-   font = await pdfDoc.embedFont(StandardFonts.Helvetica);
- }
- 
- let page = pdfDoc.addPage();
- const { width, height } = page.getSize();
- const margin = 50;
- let yPosition = height - margin;
- const fontSize = 12;
- const lineHeight = fontSize * 1.8;
- 
- // Process Hebrew text without using bidi-js
- const processHebrewText = (text: string): string => {
-   if (!text || typeof text !== 'string') {
-     return '';
-   }
-   
-   // Replace undefined values
-   let processedText = text.replace(/undefined/g, '_________');
-   
-   // Preserve numbers by wrapping them in strong LTR marks
-   processedText = processedText
-     // Year ranges (e.g., 2018-2023)
-     .replace(/(\d{4}-\d{4})/g, '\u202D$1\u202C')
-     // Phone numbers and IDs
-     .replace(/(\d{9,10})/g, '\u202D$1\u202C')
-     // Zip codes and PO boxes
-     .replace(/(\d{4,6})/g, '\u202D$1\u202C')
-     // Percentages
-     .replace(/(\d+\.?\d*%)/g, '\u202D$1\u202C')
-     // Money amounts
-     .replace(/(\d+)\s*(₪)/g, '\u202D$1\u202C $2')
-     // Hours (48 שעות)
-     .replace(/(\d+)\s*(שעות|ימים|שנים)/g, '\u202D$1\u202C $2')
-     // Section numbers
-     .replace(/^(\d+)\./gm, '\u202D$1\u202C.')
-     // Any remaining numbers
-     .replace(/(\d+)/g, '\u202D$1\u202C');
-   
-   return processedText;
- };
+  console.log('🎯 Starting PDF blob generation with pdfMake and Hebrew support');
+  
+  // Load Hebrew font
+  const hebrewFontLoaded = await loadHebrewFont();
+  const fontFamily = hebrewFontLoaded ? 'NotoSansHebrew' : 'Roboto';
+  
+  const contractText = generateContractText(contractData);
+  const lines = contractText.split('\n');
+  
+  // Current date
+  const currentDate = new Date().toLocaleDateString('he-IL');
+  
+  // Document definition (same as above but for blob only)
+  const docDefinition = {
+    pageSize: 'A4',
+    pageMargins: [40, 50, 40, 50],
+    
+    defaultStyle: {
+      font: fontFamily,
+      fontSize: 11,
+      alignment: 'right',
+      direction: 'rtl'
+    },
+    
+    styles: {
+      header: {
+        fontSize: 18,
+        bold: true,
+        alignment: 'center',
+        margin: [0, 0, 0, 20]
+      },
+      subheader: {
+        fontSize: 14,
+        bold: true,
+        alignment: 'right',
+        margin: [0, 10, 0, 5]
+      },
+      body: {
+        fontSize: 11,
+        alignment: 'right',
+        lineHeight: 1.5,
+        margin: [0, 0, 0, 8]
+      },
+      parties: {
+        fontSize: 12,
+        bold: true,
+        alignment: 'right',
+        margin: [0, 5, 0, 5]
+      },
+      numbered: {
+        fontSize: 11,
+        bold: true,
+        alignment: 'right',
+        margin: [0, 8, 0, 3]
+      },
+      promissoryTitle: {
+        fontSize: 16,
+        bold: true,
+        alignment: 'center',
+        margin: [0, 20, 0, 10]
+      }
+    },
+    
+    content: []
+  };
 
- // Helper to add RTL text (same as main function)
- const addRTLText = (text: string, size: number = fontSize, isTitle: boolean = false, isBold: boolean = false) => {
-   if (yPosition < margin + 50) {
-     page = pdfDoc.addPage();
-     yPosition = height - margin;
-   }
-   
-   const processedText = processHebrewText(text);
-   
-   if (!processedText || processedText.trim() === '') {
-     yPosition -= lineHeight * 0.5;
-     return;
-   }
-   
-   try {
-     const textAreaWidth = width - (margin * 2);
-     const rightEdge = width - margin;
-     
-     if (isTitle) {
-       const textWidth = font.widthOfTextAtSize(processedText, size);
-       const centerX = (width - textWidth) / 2;
-       
-       page.drawText(processedText, {
-         x: centerX,
-         y: yPosition,
-         size: size,
-         font: font,
-         color: rgb(0, 0, 0),
-       });
-       
-       yPosition -= size * 2.5;
-     } else {
-       const words = processedText.split(' ');
-       let lines: string[] = [];
-       let currentLine = '';
-       
-       for (const word of words) {
-         const testLine = currentLine ? `${currentLine} ${word}` : word;
-         const testWidth = font.widthOfTextAtSize(testLine, size);
-         
-         if (testWidth <= textAreaWidth && testLine.length < 120) {
-           currentLine = testLine;
-         } else {
-           if (currentLine) {
-             lines.push(currentLine);
-           }
-           currentLine = word;
-         }
-       }
-       
-       if (currentLine) {
-         lines.push(currentLine);
-       }
-       
-       if (lines.length === 0) {
-         lines = [processedText];
-       }
-       
-       lines.forEach((line) => {
-         if (yPosition < margin + 30) {
-           page = pdfDoc.addPage();
-           yPosition = height - margin;
-         }
-         
-         const lineWidth = font.widthOfTextAtSize(line, size);
-         const xPosition = rightEdge - lineWidth;
-         
-         page.drawText(line, {
-           x: Math.max(margin, xPosition),
-           y: yPosition,
-           size: size,
-           font: font,
-           color: rgb(0, 0, 0),
-         });
-         
-         yPosition -= size * 1.8;
-       });
-       
-       if (lines.length > 1 || isBold) {
-         yPosition -= size * 0.5;
-       }
-     }
-   } catch (e) {
-     console.error('❌ Error rendering text for blob:', e);
-     yPosition -= lineHeight;
-   }
- };
- 
- // Generate contract text
- const contractText = generateContractText(contractData);
- 
- // Add title
- addRTLText('הסכם שירות להחזרי מס', 18, true, true);
- 
- // Add date and contract number
- const currentDate = new Date().toLocaleDateString('he-IL');
- addRTLText(`תאריך: ${currentDate}`, 12);
- addRTLText(`מספר חוזה: ${contractData.contractNumber || '___________'}`, 12);
- 
- // Add extra space after header
- yPosition -= 10;
- 
- // Process contract content line by line
- const lines = contractText.split('\n');
- 
- lines.forEach((line: string, index: number) => {
-   const trimmedLine = line.trim();
-   
-   if (index === 0 && trimmedLine.includes('הסכם שירות להחזרי מס')) {
-     return;
-   }
-   
-   if (!trimmedLine) {
-     yPosition -= lineHeight * 0.5;
-   } else if (/^\d+\./.test(trimmedLine)) {
-     if (index > 0) {
-       yPosition -= lineHeight * 0.3;
-     }
-     addRTLText(trimmedLine, fontSize, false, true);
-   } else if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
-     addRTLText(trimmedLine, fontSize + 1, false, true);
-   } else if (trimmedLine.startsWith('הואיל')) {
-     yPosition -= lineHeight * 0.2;
-     addRTLText(trimmedLine, fontSize);
-   } else if (trimmedLine === 'שטר חוב') {
-     yPosition -= lineHeight;
-     addRTLText(trimmedLine, 16, true, true);
-   } else {
-     addRTLText(trimmedLine, fontSize);
-   }
- });
- 
- // Add signature section with proper spacing
- yPosition -= 30;
- 
- // Add signature if exists
- if (signatureDataURL) {
-   try {
-     if (yPosition < 100) {
-       page = pdfDoc.addPage();
-       yPosition = height - margin;
-     }
-     
-     const signatureImage = await pdfDoc.embedPng(signatureDataURL);
-     const dims = signatureImage.scale(0.3);
-     
-     page.drawImage(signatureImage, {
-       x: width - margin - dims.width,
-       y: yPosition - dims.height - 10,
-       width: dims.width,
-       height: dims.height,
-     });
-   } catch (e) {
-     console.error('Signature embedding failed:', e);
-   }
- }
- 
- // Return PDF as blob for storage
- const pdfBytes = await pdfDoc.save();
- return new Blob([pdfBytes], { type: 'application/pdf' });
+  // Build content array (same logic as above)
+  const content: any[] = [];
+  
+  content.push(createContentBlock('הסכם שירות להחזרי מס', 'header'));
+  
+  content.push({
+    columns: [
+      { text: processHebrewText(`תאריך: ${currentDate}`), width: '*', alignment: 'right' },
+      { text: processHebrewText(`מספר חוזה: ${contractData.contractNumber || '___________'}`), width: '*', alignment: 'right' }
+    ],
+    margin: [0, 0, 0, 20]
+  });
+  
+  lines.forEach((line: string, index: number) => {
+    const trimmedLine = line.trim();
+    
+    if (index === 0 && trimmedLine.includes('הסכם שירות להחזרי מס')) {
+      return;
+    }
+    
+    if (!trimmedLine) {
+      content.push({ text: '', margin: [0, 5, 0, 0] });
+    } else if (/^\d+\./.test(trimmedLine)) {
+      content.push(createContentBlock(trimmedLine, 'numbered'));
+    } else if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
+      content.push(createContentBlock(trimmedLine, 'parties'));
+    } else if (trimmedLine.startsWith('הואיל')) {
+      content.push(createContentBlock(trimmedLine, 'body'));
+    } else if (trimmedLine === 'שטר חוב') {
+      content.push(createContentBlock(trimmedLine, 'promissoryTitle'));
+    } else {
+      content.push(createContentBlock(trimmedLine, 'body'));
+    }
+  });
+  
+  // Add signature section
+  content.push({ text: '', margin: [0, 30, 0, 0] });
+  
+  if (signatureDataURL) {
+    content.push({
+      columns: [
+        {
+          stack: [
+            { text: processHebrewText('חתימת הלקוח:'), style: 'body' },
+            {
+              image: signatureDataURL,
+              width: 150,
+              height: 75,
+              margin: [0, 10, 0, 0]
+            }
+          ],
+          width: '50%'
+        },
+        {
+          stack: [
+            { text: processHebrewText('תאריך:'), style: 'body' },
+            { text: processHebrewText(currentDate), margin: [0, 20, 0, 0] }
+          ],
+          width: '50%'
+        }
+      ]
+    });
+  } else {
+    content.push({
+      columns: [
+        {
+          stack: [
+            { text: processHebrewText('חתימת הלקוח:'), style: 'body' },
+            { text: '_______________________', margin: [0, 20, 0, 0] }
+          ],
+          width: '50%'
+        },
+        {
+          stack: [
+            { text: processHebrewText('תאריך:'), style: 'body' },
+            { text: '_______________________', margin: [0, 20, 0, 0] }
+          ],
+          width: '50%'
+        }
+      ]
+    });
+  }
+  
+  docDefinition.content = content;
+  
+  // Generate PDF blob
+  try {
+    const pdfDocGenerator = pdfMake.createPdf(docDefinition);
+    
+    return new Promise<Blob>((resolve, reject) => {
+      pdfDocGenerator.getBlob((blob: Blob) => {
+        console.log('✅ PDF blob generated successfully');
+        resolve(blob);
+      });
+    });
+  } catch (error) {
+    console.error('❌ PDF blob generation failed:', error);
+    throw error;
+  }
 }
