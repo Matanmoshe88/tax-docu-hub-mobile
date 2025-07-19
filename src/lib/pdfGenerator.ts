@@ -200,7 +200,27 @@ async function compressSignatureImage(dataURL: string): Promise<string> {
   });
 }
 
-// Usage in your component
+// Function to generate PDF and return blob (for storage upload)
+export async function generateContractPDFBlob(contractData: any, signatureDataURL: string): Promise<Blob> {
+  try {
+    const pdf = await generateContractPDF(contractData, signatureDataURL);
+    
+    // Check file size
+    const pdfOutput = pdf.output('blob');
+    console.log('PDF size:', (pdfOutput.size / 1024).toFixed(2), 'KB');
+    
+    if (pdfOutput.size > 500000) {
+      console.warn('PDF exceeds 500KB, consider further optimization');
+    }
+    
+    return pdfOutput;
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    throw error;
+  }
+}
+
+// Function to generate and download PDF (for direct download)
 export async function createAndDownloadPDF(contractData: any, signatureDataURL: string) {
   try {
     const pdf = await generateContractPDF(contractData, signatureDataURL);
