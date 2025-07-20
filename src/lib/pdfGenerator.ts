@@ -5,33 +5,15 @@ import { generateContractText } from './contractUtils';
 const generatePDFFromHTML = async (contractData: any, signatureDataURL: string): Promise<Blob> => {
   console.log('🎯 Generating PDF using HTML approach with proper RTL support');
   console.log('📊 Contract data received:', contractData);
-  console.log('🔍 All contractData keys:', Object.keys(contractData));
-  console.log('👤 Client object:', contractData.client);
-  if (contractData.client) {
-    console.log('🔍 Client keys:', Object.keys(contractData.client));
-  }
-  console.log('📱 Phone fields check:', {
-    phone: contractData.phone,
-    clientPhone: contractData.client?.phone,
-    clientMobilePhone: contractData.client?.mobilePhone,
-    MobilePhone: contractData.MobilePhone,
-    PersonMobilePhone: contractData.PersonMobilePhone
-  });
-  console.log('💰 Commission fields check:', {
-    commissionRate: contractData.commissionRate,
-    clientCommissionRate: contractData.client?.commissionRate,
-    clientCommissionRateField: contractData.client?.commission_rate__c,
-    commission_rate__c: contractData.commission_rate__c
-  });
   
   const clientData = {
-    firstName: contractData.firstName || contractData.client?.name?.split(' ')[0] || contractData.client?.firstName || contractData.Name?.split(' ')[0] || '',
-    lastName: contractData.lastName || contractData.client?.name?.split(' ').slice(1).join(' ') || contractData.client?.lastName || contractData.Name?.split(' ').slice(1).join(' ') || '',
-    idNumber: contractData.idNumber || contractData.client?.id || contractData.client?.idNumber || contractData.PersonalNumber__c || '',
-    phone: contractData.phone || contractData.client?.phone || contractData.client?.mobilePhone || contractData.MobilePhone || contractData.PersonMobilePhone || '',
-    email: contractData.email || contractData.client?.email || contractData.PersonEmail || '',
-    address: contractData.address || contractData.client?.address || contractData.PersonMailingStreet || '',
-    commissionRate: contractData.commissionRate || contractData.client?.commissionRate || contractData.client?.commission_rate__c || contractData.commission_rate__c || '22%',
+    firstName: contractData.firstName || contractData.client?.name?.split(' ')[0] || contractData.clientData?.firstName || contractData.Name?.split(' ')[0] || '',
+    lastName: contractData.lastName || contractData.client?.name?.split(' ').slice(1).join(' ') || contractData.clientData?.lastName || contractData.Name?.split(' ').slice(1).join(' ') || '',
+    idNumber: contractData.idNumber || contractData.client?.id || contractData.clientData?.idNumber || contractData.PersonalNumber__c || '',
+    phone: contractData.phone || contractData.client?.phone || contractData.clientData?.phone || contractData.MobilePhone || '',
+    email: contractData.email || contractData.client?.email || contractData.clientData?.email || contractData.PersonEmail || '',
+    address: contractData.address || contractData.client?.address || contractData.clientData?.address || contractData.PersonMailingStreet || '',
+    commissionRate: contractData.commissionRate || contractData.client?.commissionRate || contractData.clientData?.commissionRate || contractData.commission_rate__c || '22%',
     contractNumber: contractData.contractNumber || contractData.Id || ''
   };
 
@@ -126,23 +108,12 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
         
         .promissory-note {
           page-break-before: always;
-          page-break-inside: avoid;
           text-align: center;
-          font-size: 12px;
-          font-weight: normal;
-          margin-top: 0;
-          padding-top: 50px;
-          min-height: 90vh;
-          height: auto;
-          break-inside: avoid;
-        }
-        
-        .promissory-title {
           font-size: 14px;
           font-weight: bold;
-          text-align: center;
-          margin-bottom: 30px;
-          page-break-after: avoid;
+          margin-top: 0;
+          padding-top: 50px;
+          min-height: 100vh;
         }
         
         .promissory-content {
@@ -151,9 +122,6 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
           font-size: 12px;
           font-weight: normal;
           page-break-inside: avoid;
-          break-inside: avoid;
-          orphans: 5;
-          widows: 5;
         }
         
         .main-contract {
@@ -213,16 +181,7 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
               if (!trimmedLine) return '<div style="height: 10px;"></div>';
               if (trimmedLine.includes('הסכם שירות להחזרי מס')) return ''; // Skip title
               if (trimmedLine === 'שטר חוב') {
-                return '</div></div><div class="page-break"></div><div class="promissory-note"><div class="promissory-title">שטר חוב</div><div class="promissory-content">';
-              }
-              if (trimmedLine.includes('חתימת עושה השטר:')) {
-                return `<div class="content-section">${trimmedLine}</div>
-                        <div style="margin: -5px 0 10px 20px;">
-                          ${signatureDataURL ? 
-                            `<img src="${signatureDataURL}" style="width: 120px; height: 60px;" />` : 
-                            '<div style="height: 60px;"></div>'
-                          }
-                        </div>`;
+                return '</div></div><div class="page-break"></div><div class="promissory-note">שטר חוב<div class="promissory-content">';
               }
               if (/^\d+\./.test(trimmedLine)) return `<div class="numbered-section">${trimmedLine}</div>`;
               if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
@@ -239,10 +198,10 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
         <div class="signature-section">
           <div>
             <div>חתימת הלקוח:</div>
-            ${signatureDataURL ? 
-              `<img src="${signatureDataURL}" style="width: 150px; height: 75px; border: 1px solid #ccc;" />` : 
-              '<div class="signature-line"></div>'
-            }
+          ${signatureDataURL ? 
+            `<img src="${signatureDataURL}" style="width: 150px; height: 60px; position: relative; top: -15px; right: 20px;" />` : 
+            '<div class="signature-line"></div>'
+          }
           </div>
           <div class="date-section">
             <div>תאריך:</div>
@@ -267,44 +226,19 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
   document.body.appendChild(tempDiv);
   
   try {
-    // Hide promissory note for main contract rendering
-    const promissoryNote = tempDiv.querySelector('.promissory-note') as HTMLElement;
-    const promissoryDisplay = promissoryNote.style.display;
-    promissoryNote.style.display = 'none';
-    
-    // Render main contract
-    const mainCanvas = await html2canvas(tempDiv.querySelector('.contract-container') as HTMLElement, {
+    // Convert HTML to canvas with compression settings
+    const canvas = await html2canvas(tempDiv.querySelector('.contract-container') as HTMLElement, {
       allowTaint: true,
       useCORS: true,
-      scale: 1.2,
+      scale: 1.2, // Reduced scale for smaller file size
       backgroundColor: '#ffffff',
       width: 800,
       windowWidth: 800
     });
     
-    // Show only promissory note for separate rendering
-    const mainContract = tempDiv.querySelector('.main-contract') as HTMLElement;
-    const headerElement = tempDiv.querySelector('.header') as HTMLElement;
-    const titleElement = tempDiv.querySelector('.title') as HTMLElement;
-    const signatureElement = tempDiv.querySelector('.signature-section') as HTMLElement;
+    const imgData = canvas.toDataURL('image/jpeg', 0.7); // JPEG with 70% quality for compression
     
-    mainContract.style.display = 'none';
-    headerElement.style.display = 'none';
-    titleElement.style.display = 'none';
-    signatureElement.style.display = 'none';
-    promissoryNote.style.display = promissoryDisplay;
-    
-    // Render promissory note
-    const promissoryCanvas = await html2canvas(tempDiv.querySelector('.contract-container') as HTMLElement, {
-      allowTaint: true,
-      useCORS: true,
-      scale: 1.2,
-      backgroundColor: '#ffffff',
-      width: 800,
-      windowWidth: 800
-    });
-    
-    // Create PDF
+    // Create PDF from the canvas
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -313,30 +247,21 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
     
     const imgWidth = 210; // A4 width in mm
     const pageHeight = 295; // A4 height in mm
-    
-    // Add main contract pages
-    const mainImgData = mainCanvas.toDataURL('image/jpeg', 0.7);
-    const mainImgHeight = (mainCanvas.height * imgWidth) / mainCanvas.width;
-    let heightLeft = mainImgHeight;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = imgHeight;
     let position = 0;
     
     // Add first page
-    pdf.addImage(mainImgData, 'JPEG', 0, position, imgWidth, mainImgHeight);
+    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
     
-    // Add additional pages if needed for main contract
+    // Add additional pages if needed
     while (heightLeft >= 0) {
-      position = heightLeft - mainImgHeight;
+      position = heightLeft - imgHeight;
       pdf.addPage();
-      pdf.addImage(mainImgData, 'JPEG', 0, position, imgWidth, mainImgHeight);
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
     }
-    
-    // Add new page for promissory note
-    pdf.addPage();
-    const promissoryImgData = promissoryCanvas.toDataURL('image/jpeg', 0.7);
-    const promissoryImgHeight = (promissoryCanvas.height * imgWidth) / promissoryCanvas.width;
-    pdf.addImage(promissoryImgData, 'JPEG', 0, 0, imgWidth, promissoryImgHeight);
     
     return pdf.output('blob');
   } finally {
