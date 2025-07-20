@@ -6,26 +6,32 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
   console.log('🎯 Generating PDF using HTML approach with proper RTL support');
   console.log('📊 Contract data received:', contractData);
   console.log('🔍 All contractData keys:', Object.keys(contractData));
+  console.log('👤 Client object:', contractData.client);
+  if (contractData.client) {
+    console.log('🔍 Client keys:', Object.keys(contractData.client));
+  }
   console.log('📱 Phone fields check:', {
     phone: contractData.phone,
     clientPhone: contractData.client?.phone,
+    clientMobilePhone: contractData.client?.mobilePhone,
     MobilePhone: contractData.MobilePhone,
     PersonMobilePhone: contractData.PersonMobilePhone
   });
   console.log('💰 Commission fields check:', {
     commissionRate: contractData.commissionRate,
     clientCommissionRate: contractData.client?.commissionRate,
+    clientCommissionRateField: contractData.client?.commission_rate__c,
     commission_rate__c: contractData.commission_rate__c
   });
   
   const clientData = {
-    firstName: contractData.firstName || contractData.client?.name?.split(' ')[0] || contractData.clientData?.firstName || contractData.Name?.split(' ')[0] || '',
-    lastName: contractData.lastName || contractData.client?.name?.split(' ').slice(1).join(' ') || contractData.clientData?.lastName || contractData.Name?.split(' ').slice(1).join(' ') || '',
-    idNumber: contractData.idNumber || contractData.client?.id || contractData.clientData?.idNumber || contractData.PersonalNumber__c || '',
-    phone: contractData.phone || contractData.client?.phone || contractData.clientData?.phone || contractData.MobilePhone || contractData.PersonMobilePhone || '',
-    email: contractData.email || contractData.client?.email || contractData.clientData?.email || contractData.PersonEmail || '',
-    address: contractData.address || contractData.client?.address || contractData.clientData?.address || contractData.PersonMailingStreet || '',
-    commissionRate: contractData.commissionRate || contractData.client?.commissionRate || contractData.clientData?.commissionRate || contractData.commission_rate__c || '22%',
+    firstName: contractData.firstName || contractData.client?.name?.split(' ')[0] || contractData.client?.firstName || contractData.Name?.split(' ')[0] || '',
+    lastName: contractData.lastName || contractData.client?.name?.split(' ').slice(1).join(' ') || contractData.client?.lastName || contractData.Name?.split(' ').slice(1).join(' ') || '',
+    idNumber: contractData.idNumber || contractData.client?.id || contractData.client?.idNumber || contractData.PersonalNumber__c || '',
+    phone: contractData.phone || contractData.client?.phone || contractData.client?.mobilePhone || contractData.MobilePhone || contractData.PersonMobilePhone || '',
+    email: contractData.email || contractData.client?.email || contractData.PersonEmail || '',
+    address: contractData.address || contractData.client?.address || contractData.PersonMailingStreet || '',
+    commissionRate: contractData.commissionRate || contractData.client?.commissionRate || contractData.client?.commission_rate__c || contractData.commission_rate__c || '22%',
     contractNumber: contractData.contractNumber || contractData.Id || ''
   };
 
