@@ -10,10 +10,10 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
     firstName: contractData.firstName || contractData.client?.name?.split(' ')[0] || contractData.clientData?.firstName || contractData.Name?.split(' ')[0] || '',
     lastName: contractData.lastName || contractData.client?.name?.split(' ').slice(1).join(' ') || contractData.clientData?.lastName || contractData.Name?.split(' ').slice(1).join(' ') || '',
     idNumber: contractData.idNumber || contractData.client?.id || contractData.clientData?.idNumber || contractData.PersonalNumber__c || '',
-    phone: contractData.phone || contractData.client?.phone || contractData.clientData?.phone || contractData.PersonMobilePhone || '',
+    phone: contractData.phone || contractData.client?.phone || contractData.clientData?.phone || contractData.MobilePhone || '',
     email: contractData.email || contractData.client?.email || contractData.clientData?.email || contractData.PersonEmail || '',
     address: contractData.address || contractData.client?.address || contractData.clientData?.address || contractData.PersonMailingStreet || '',
-    commissionRate: contractData.commissionRate || contractData.client?.commissionRate || contractData.clientData?.commissionRate || '25%',
+    commissionRate: contractData.commissionRate || contractData.client?.commissionRate || contractData.clientData?.commissionRate || contractData.commission_rate__c || '22%',
     contractNumber: contractData.contractNumber || contractData.Id || ''
   };
 
@@ -109,16 +109,18 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
         .promissory-note {
           page-break-before: always;
           text-align: center;
-          font-size: 18px;
+          font-size: 14px;
           font-weight: bold;
           margin-top: 0;
-          padding-top: 150px;
+          padding-top: 50px;
           min-height: 100vh;
         }
         
         .promissory-content {
           margin-top: 30px;
           text-align: right;
+          font-size: 12px;
+          font-weight: normal;
           page-break-inside: avoid;
         }
         
