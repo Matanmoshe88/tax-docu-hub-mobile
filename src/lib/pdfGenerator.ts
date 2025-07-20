@@ -217,7 +217,7 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
               }
               if (trimmedLine.includes('חתימת עושה השטר:')) {
                 return `<div class="content-section">${trimmedLine}</div>
-                        <div style="margin: 10px 0;">
+                        <div style="margin: -5px 0 10px 20px;">
                           ${signatureDataURL ? 
                             `<img src="${signatureDataURL}" style="width: 120px; height: 60px;" />` : 
                             '<div style="height: 60px;"></div>'
