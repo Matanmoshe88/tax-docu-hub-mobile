@@ -126,17 +126,28 @@ export const useSalesforceData = () => {
       const { leadData, documentHubId, documents, accessToken, instanceUrl } = data.data;
       console.log('✅ Salesforce data loaded successfully');
       console.log('📊 API Response data:', { leadData, documentHubId, documents, accessToken: '***', instanceUrl });
+      console.log('🔍 LeadData fields:', Object.keys(leadData || {}));
+      console.log('📱 LeadData phone fields:', {
+        MobilePhone: leadData.MobilePhone,
+        PersonMobilePhone: leadData.PersonMobilePhone,
+        Phone: leadData.Phone
+      });
+      console.log('💰 LeadData commission fields:', {
+        Commission__c: leadData.Commission__c,
+        commission_rate__c: leadData.commission_rate__c,
+        CommissionRate: leadData.CommissionRate
+      });
 
       // Update client data with real Salesforce data
       const nameParts = leadData.Name ? leadData.Name.split(' ') : ['', ''];
       const updatedClientData = {
         firstName: nameParts[0] || '',
         lastName: nameParts.slice(1).join(' ') || '',
-        idNumber: leadData.id__c || '',
-        phone: leadData.MobilePhone || '',
-        email: 'client@email.com', // Email not provided in mapping
-        address: leadData.fulladress__c || '',
-        commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : '25%'
+        idNumber: leadData.id__c || leadData.PersonalNumber__c || '',
+        phone: leadData.MobilePhone || leadData.PersonMobilePhone || leadData.Phone || '',
+        email: leadData.PersonEmail || leadData.Email || 'client@email.com',
+        address: leadData.fulladress__c || leadData.PersonMailingStreet || '',
+        commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : (leadData.commission_rate__c ? `${leadData.commission_rate__c}%` : '22%')
       };
 
       setClientData(updatedClientData);
