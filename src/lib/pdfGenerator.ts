@@ -1,22 +1,221 @@
 import { jsPDF } from 'jspdf';
 import { generateContractText } from './contractUtils';
 
-// Hebrew font support using proper embedding
-const addHebrewFont = async (doc: jsPDF) => {
+// Alternative PDF generation using HTML and proper RTL support
+const generatePDFFromHTML = async (contractData: any, signatureDataURL: string): Promise<Blob> => {
+  console.log('🎯 Generating PDF using HTML approach with proper RTL support');
+  
+  const clientData = {
+    firstName: contractData.firstName || contractData.client?.firstName || contractData.clientData?.firstName || '',
+    lastName: contractData.lastName || contractData.client?.lastName || contractData.clientData?.lastName || '',
+    idNumber: contractData.idNumber || contractData.client?.idNumber || contractData.clientData?.idNumber || '',
+    phone: contractData.phone || contractData.client?.phone || contractData.clientData?.phone || '',
+    email: contractData.email || contractData.client?.email || contractData.clientData?.email || '',
+    address: contractData.address || contractData.client?.address || contractData.clientData?.address || '',
+    commissionRate: contractData.commissionRate || contractData.client?.commissionRate || contractData.clientData?.commissionRate || '25%',
+    contractNumber: contractData.contractNumber || ''
+  };
+
+  const contractText = generateContractText(clientData);
+  const currentDate = new Date().toLocaleDateString('he-IL');
+  
+  // Create HTML with proper RTL support and UTF-8 encoding
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html dir="rtl" lang="he">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@400;700&display=swap');
+        
+        * {
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: 'Noto Sans Hebrew', Arial, sans-serif;
+          direction: rtl;
+          text-align: right;
+          margin: 0;
+          padding: 20px;
+          line-height: 1.6;
+          font-size: 12px;
+          background: white;
+          color: black;
+        }
+        
+        .contract-container {
+          max-width: 800px;
+          margin: 0 auto;
+          direction: rtl;
+          text-align: right;
+        }
+        
+        .title {
+          text-align: center;
+          font-size: 20px;
+          font-weight: bold;
+          margin-bottom: 20px;
+        }
+        
+        .header-info {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 20px;
+          font-size: 12px;
+        }
+        
+        .content-section {
+          margin-bottom: 15px;
+          direction: rtl;
+          text-align: right;
+        }
+        
+        .numbered-section {
+          font-weight: bold;
+          margin-top: 10px;
+          margin-bottom: 5px;
+        }
+        
+        .party-section {
+          font-weight: bold;
+          font-size: 14px;
+          margin-top: 10px;
+        }
+        
+        .promissory-note {
+          page-break-before: always;
+          text-align: center;
+          font-size: 18px;
+          font-weight: bold;
+          margin-top: 30px;
+        }
+        
+        .signature-section {
+          margin-top: 40px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        
+        .signature-line {
+          border-bottom: 1px solid black;
+          width: 200px;
+          height: 50px;
+          margin-top: 10px;
+        }
+        
+        .date-section {
+          text-align: left;
+        }
+        
+        @media print {
+          body { 
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="contract-container">
+        <div class="title">הסכם שירות להחזרי מס</div>
+        
+        <div class="header-info">
+          <div>תאריך: ${currentDate}</div>
+          <div>מספר חוזה: ${clientData.contractNumber || '___________'}</div>
+        </div>
+        
+        <div class="content">
+          ${contractText.split('\n').map(line => {
+            const trimmedLine = line.trim();
+            if (!trimmedLine) return '<div style="height: 10px;"></div>';
+            if (trimmedLine.includes('הסכם שירות להחזרי מס')) return ''; // Skip title
+            if (trimmedLine === 'שטר חוב') return '<div class="promissory-note">שטר חוב</div>';
+            if (/^\d+\./.test(trimmedLine)) return `<div class="numbered-section">${trimmedLine}</div>`;
+            if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
+              return `<div class="party-section">${trimmedLine}</div>`;
+            }
+            if (trimmedLine.includes('פרטי עושה השטר:')) {
+              return `<div class="numbered-section">${trimmedLine}</div>`;
+            }
+            return `<div class="content-section">${trimmedLine}</div>`;
+          }).join('')}
+        </div>
+        
+        <div class="signature-section">
+          <div>
+            <div>חתימת הלקוח:</div>
+            ${signatureDataURL ? 
+              `<img src="${signatureDataURL}" style="width: 150px; height: 75px; border: 1px solid #ccc;" />` : 
+              '<div class="signature-line"></div>'
+            }
+          </div>
+          <div class="date-section">
+            <div>תאריך:</div>
+            <div>${currentDate}</div>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Use html2canvas and jsPDF for better Hebrew support
+  const { jsPDF } = await import('jspdf');
+  const html2canvas = (await import('html2canvas')).default;
+  
+  // Create a temporary element to render the HTML
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = htmlContent;
+  tempDiv.style.position = 'absolute';
+  tempDiv.style.left = '-9999px';
+  tempDiv.style.width = '800px';
+  document.body.appendChild(tempDiv);
+  
   try {
-    // Load the Hebrew font from public folder
-    const response = await fetch('/fonts/NotoSansHebrew-Regular.ttf');
-    const fontBuffer = await response.arrayBuffer();
-    const fontBase64 = btoa(String.fromCharCode(...new Uint8Array(fontBuffer)));
+    // Convert HTML to canvas with proper RTL support
+    const canvas = await html2canvas(tempDiv.querySelector('.contract-container') as HTMLElement, {
+      allowTaint: true,
+      useCORS: true,
+      scale: 2,
+      backgroundColor: '#ffffff',
+      width: 800,
+      windowWidth: 800
+    });
     
-    // Add the font to jsPDF
-    doc.addFileToVFS('NotoSansHebrew-Regular.ttf', fontBase64);
-    doc.addFont('NotoSansHebrew-Regular.ttf', 'NotoSansHebrew', 'normal');
-    doc.setFont('NotoSansHebrew');
-  } catch (error) {
-    console.warn('Could not load Hebrew font, falling back to default');
-    // Fallback to default font
-    doc.setFont('helvetica');
+    const imgData = canvas.toDataURL('image/png');
+    
+    // Create PDF from the canvas
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+    
+    const imgWidth = 210; // A4 width in mm
+    const pageHeight = 295; // A4 height in mm
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 0;
+    
+    // Add first page
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+    
+    // Add additional pages if needed
+    while (heightLeft >= 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+    
+    return pdf.output('blob');
+  } finally {
+    // Clean up
+    document.body.removeChild(tempDiv);
   }
 };
 
@@ -36,197 +235,23 @@ const processHebrewText = (text: string): string => {
 };
 
 export async function generateContractPDF(contractData: any, signatureDataURL: string) {
-  console.log('🎯 Starting PDF generation with Hebrew support');
-  console.log('Contract data received:', contractData);
+  console.log('🎯 Using HTML-based PDF generation for better Hebrew support');
   
-  // Extract client data
-  const clientData = {
-    firstName: contractData.firstName || 
-               contractData.client?.firstName || 
-               contractData.clientData?.firstName || '',
-    lastName: contractData.lastName || 
-              contractData.client?.lastName || 
-              contractData.clientData?.lastName || '',
-    idNumber: contractData.idNumber || 
-              contractData.client?.idNumber || 
-              contractData.clientData?.idNumber || '',
-    phone: contractData.phone || 
-           contractData.client?.phone || 
-           contractData.clientData?.phone || '',
-    email: contractData.email || 
-           contractData.client?.email || 
-           contractData.clientData?.email || '',
-    address: contractData.address || 
-             contractData.client?.address || 
-             contractData.clientData?.address || '',
-    commissionRate: contractData.commissionRate || 
-                    contractData.client?.commissionRate || 
-                    contractData.clientData?.commissionRate || '25%',
-    contractNumber: contractData.contractNumber || ''
-  };
+  // Use the new HTML-based approach for better RTL support
+  const blob = await generatePDFFromHTML(contractData, signatureDataURL);
   
-  console.log('Extracted client data:', clientData);
+  // Also trigger download
+  const fileName = `contract_${contractData.idNumber || contractData.client?.idNumber || 'client'}_${Date.now()}.pdf`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
   
-  // Create new PDF
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4'
-  });
-  
-  // Add Hebrew font support
-  await addHebrewFont(doc);
-  
-  // Get contract text
-  const contractText = generateContractText(clientData);
-  const lines = contractText.split('\n');
-  const currentDate = new Date().toLocaleDateString('he-IL');
-  
-  // Page settings
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
-  const rightMargin = pageWidth - margin;
-  let yPosition = margin + 10;
-  
-  // Helper function to add RTL text
-  const addRTLText = (
-    text: string, 
-    fontSize: number = 12, 
-    isBold: boolean = false,
-    align: 'right' | 'center' | 'left' = 'right',
-    yOffset: number = 0
-  ) => {
-    doc.setFontSize(fontSize);
-    
-    // Calculate x position based on alignment
-    let xPos = rightMargin;
-    if (align === 'center') {
-      xPos = pageWidth / 2;
-    } else if (align === 'left') {
-      xPos = margin;
-    }
-    
-    // Check if we need a new page
-    if (yPosition + yOffset > pageHeight - margin) {
-      doc.addPage();
-      yPosition = margin + 10;
-    }
-    
-    yPosition += yOffset;
-    
-    // Split long lines
-    const maxWidth = pageWidth - (2 * margin);
-    const splitText = doc.splitTextToSize(text, maxWidth);
-    
-    // Add each line
-    splitText.forEach((line: string) => {
-      if (yPosition > pageHeight - margin) {
-        doc.addPage();
-        yPosition = margin + 10;
-      }
-      
-      // Process Hebrew text for RTL
-      const processedLine = processHebrewText(line);
-      doc.text(processedLine, xPos, yPosition, { align });
-      yPosition += fontSize * 0.6;
-    });
-    
-    return yPosition;
-  };
-  
-  // Add title
-  yPosition = addRTLText('הסכם שירות להחזרי מס', 20, true, 'center', 0);
-  yPosition += 10;
-  
-  // Add date and contract number
-  doc.setFontSize(12);
-  const dateText = `תאריך: ${currentDate}`;
-  const contractNumText = `מספר חוזה: ${clientData.contractNumber || '___________'}`;
-  
-  doc.text(processHebrewText(dateText), rightMargin, yPosition, { align: 'right' });
-  doc.text(processHebrewText(contractNumText), margin, yPosition, { align: 'left' });
-  yPosition += 15;
-  
-  // Process contract content
-  lines.forEach((line, index) => {
-    const trimmedLine = line.trim();
-    
-    // Skip empty lines
-    if (!trimmedLine) {
-      yPosition += 5;
-      return;
-    }
-    
-    // Skip title line
-    if (index === 0 && trimmedLine.includes('הסכם שירות להחזרי מס')) {
-      return;
-    }
-    
-    // Handle different line types
-    if (trimmedLine === 'שטר חוב') {
-      // Add new page for promissory note
-      doc.addPage();
-      yPosition = margin + 10;
-      yPosition = addRTLText('שטר חוב', 18, true, 'center', 0);
-      yPosition += 10;
-    } else if (/^\d+\./.test(trimmedLine)) {
-      // Numbered sections
-      yPosition = addRTLText(trimmedLine, 12, true, 'right', 8);
-    } else if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
-      // Party sections
-      yPosition = addRTLText(trimmedLine, 14, true, 'right', 8);
-    } else if (trimmedLine.includes('פרטי עושה השטר:')) {
-      // Promissory note details
-      yPosition = addRTLText(trimmedLine, 14, true, 'right', 15);
-    } else {
-      // Regular text
-      yPosition = addRTLText(trimmedLine, 12, false, 'right', 5);
-    }
-  });
-  
-  // Add signature section
-  if (yPosition > pageHeight - 60) {
-    doc.addPage();
-    yPosition = margin + 10;
-  }
-  
-  yPosition += 20;
-  
-  // Signature title
-  doc.setFontSize(14);
-  const signatureText = processHebrewText('חתימת הלקוח:');
-  const dateLabel = processHebrewText('תאריך:');
-  
-  doc.text(signatureText, rightMargin, yPosition, { align: 'right' });
-  doc.text(dateLabel, margin + 80, yPosition, { align: 'right' });
-  
-  yPosition += 10;
-  
-  // Add signature or line
-  if (signatureDataURL) {
-    try {
-      // Add signature image
-      doc.addImage(signatureDataURL, 'PNG', rightMargin - 60, yPosition, 60, 30);
-    } catch (error) {
-      console.error('Error adding signature:', error);
-      // Draw line as fallback
-      doc.line(rightMargin - 60, yPosition + 20, rightMargin, yPosition + 20);
-    }
-  } else {
-    // Draw signature line
-    doc.line(rightMargin - 60, yPosition + 20, rightMargin, yPosition + 20);
-  }
-  
-  // Add date
-  doc.text(currentDate, margin + 80, yPosition + 20, { align: 'right' });
-  
-  // Save the PDF
-  const fileName = `contract_${clientData.idNumber || 'client'}_${Date.now()}.pdf`;
-  doc.save(fileName);
-  
-  // Return as blob
-  return doc.output('blob');
+  return blob;
 }
 
 export async function createAndDownloadPDF(contractData: any, signatureDataURL: string) {
@@ -234,159 +259,8 @@ export async function createAndDownloadPDF(contractData: any, signatureDataURL: 
 }
 
 export async function generateContractPDFBlob(contractData: any, signatureDataURL: string): Promise<Blob> {
-  console.log('🎯 Generating PDF blob with Hebrew support');
+  console.log('🎯 Using HTML-based PDF generation for blob');
   
-  // Same implementation but without save()
-  const clientData = {
-    firstName: contractData.firstName || 
-               contractData.client?.firstName || 
-               contractData.clientData?.firstName || '',
-    lastName: contractData.lastName || 
-              contractData.client?.lastName || 
-              contractData.clientData?.lastName || '',
-    idNumber: contractData.idNumber || 
-              contractData.client?.idNumber || 
-              contractData.clientData?.idNumber || '',
-    phone: contractData.phone || 
-           contractData.client?.phone || 
-           contractData.clientData?.phone || '',
-    email: contractData.email || 
-           contractData.client?.email || 
-           contractData.clientData?.email || '',
-    address: contractData.address || 
-             contractData.client?.address || 
-             contractData.clientData?.address || '',
-    commissionRate: contractData.commissionRate || 
-                    contractData.client?.commissionRate || 
-                    contractData.clientData?.commissionRate || '25%',
-    contractNumber: contractData.contractNumber || ''
-  };
-  
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4'
-  });
-  
-  await addHebrewFont(doc);
-  
-  const contractText = generateContractText(clientData);
-  const lines = contractText.split('\n');
-  const currentDate = new Date().toLocaleDateString('he-IL');
-  
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
-  const rightMargin = pageWidth - margin;
-  let yPosition = margin + 10;
-  
-  const addRTLText = (
-    text: string, 
-    fontSize: number = 12, 
-    isBold: boolean = false,
-    align: 'right' | 'center' | 'left' = 'right',
-    yOffset: number = 0
-  ) => {
-    doc.setFontSize(fontSize);
-    
-    let xPos = rightMargin;
-    if (align === 'center') {
-      xPos = pageWidth / 2;
-    } else if (align === 'left') {
-      xPos = margin;
-    }
-    
-    if (yPosition + yOffset > pageHeight - margin) {
-      doc.addPage();
-      yPosition = margin + 10;
-    }
-    
-    yPosition += yOffset;
-    
-    const maxWidth = pageWidth - (2 * margin);
-    const splitText = doc.splitTextToSize(text, maxWidth);
-    
-    splitText.forEach((line: string) => {
-      if (yPosition > pageHeight - margin) {
-        doc.addPage();
-        yPosition = margin + 10;
-      }
-      
-      const processedLine = processHebrewText(line);
-      doc.text(processedLine, xPos, yPosition, { align });
-      yPosition += fontSize * 0.6;
-    });
-    
-    return yPosition;
-  };
-  
-  yPosition = addRTLText('הסכם שירות להחזרי מס', 20, true, 'center', 0);
-  yPosition += 10;
-  
-  doc.setFontSize(12);
-  const dateText = `תאריך: ${currentDate}`;
-  const contractNumText = `מספר חוזה: ${clientData.contractNumber || '___________'}`;
-  
-  doc.text(processHebrewText(dateText), rightMargin, yPosition, { align: 'right' });
-  doc.text(processHebrewText(contractNumText), margin, yPosition, { align: 'left' });
-  yPosition += 15;
-  
-  lines.forEach((line, index) => {
-    const trimmedLine = line.trim();
-    
-    if (!trimmedLine) {
-      yPosition += 5;
-      return;
-    }
-    
-    if (index === 0 && trimmedLine.includes('הסכם שירות להחזרי מס')) {
-      return;
-    }
-    
-    if (trimmedLine === 'שטר חוב') {
-      doc.addPage();
-      yPosition = margin + 10;
-      yPosition = addRTLText('שטר חוב', 18, true, 'center', 0);
-      yPosition += 10;
-    } else if (/^\d+\./.test(trimmedLine)) {
-      yPosition = addRTLText(trimmedLine, 12, true, 'right', 8);
-    } else if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
-      yPosition = addRTLText(trimmedLine, 14, true, 'right', 8);
-    } else if (trimmedLine.includes('פרטי עושה השטר:')) {
-      yPosition = addRTLText(trimmedLine, 14, true, 'right', 15);
-    } else {
-      yPosition = addRTLText(trimmedLine, 12, false, 'right', 5);
-    }
-  });
-  
-  if (yPosition > pageHeight - 60) {
-    doc.addPage();
-    yPosition = margin + 10;
-  }
-  
-  yPosition += 20;
-  
-  doc.setFontSize(14);
-  const signatureText = processHebrewText('חתימת הלקוח:');
-  const dateLabel = processHebrewText('תאריך:');
-  
-  doc.text(signatureText, rightMargin, yPosition, { align: 'right' });
-  doc.text(dateLabel, margin + 80, yPosition, { align: 'right' });
-  
-  yPosition += 10;
-  
-  if (signatureDataURL) {
-    try {
-      doc.addImage(signatureDataURL, 'PNG', rightMargin - 60, yPosition, 60, 30);
-    } catch (error) {
-      console.error('Error adding signature:', error);
-      doc.line(rightMargin - 60, yPosition + 20, rightMargin, yPosition + 20);
-    }
-  } else {
-    doc.line(rightMargin - 60, yPosition + 20, rightMargin, yPosition + 20);
-  }
-  
-  doc.text(currentDate, margin + 80, yPosition + 20, { align: 'right' });
-  
-  return doc.output('blob');
+  // Use the new HTML-based approach for better RTL support
+  return await generatePDFFromHTML(contractData, signatureDataURL);
 }
