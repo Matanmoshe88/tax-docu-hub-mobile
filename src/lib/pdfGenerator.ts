@@ -22,8 +22,8 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
   const contractText = generateContractText(clientData);
   const currentDate = new Date().toLocaleDateString('he-IL');
   
-  // Import the logo
-  const logoUrl = new URL('../assets/company-logo.png', import.meta.url).href;
+  // Create QuickTax logo as text since we can't access the image file
+  const logoHtml = '<div style="color: #2563eb; font-size: 24px; font-weight: bold;">QuickTax</div>';
   
   // Create HTML with proper RTL support and UTF-8 encoding
   const htmlContent = `
@@ -111,13 +111,19 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
           text-align: center;
           font-size: 18px;
           font-weight: bold;
-          margin-top: 50px;
-          padding-top: 100px;
+          margin-top: 0;
+          padding-top: 150px;
+          min-height: 100vh;
         }
         
         .promissory-content {
           margin-top: 30px;
           text-align: right;
+          page-break-inside: avoid;
+        }
+        
+        .main-contract {
+          page-break-after: always;
         }
         
         .signature-section {
@@ -149,7 +155,7 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
     <body>
       <div class="contract-container">
         <div class="header">
-          <img src="${logoUrl}" alt="לוגו החברה" class="logo" />
+          ${logoHtml}
           <div>
             <div>תאריך: ${currentDate}</div>
             <div>מספר חוזה: ${clientData.contractNumber || '___________'}</div>
@@ -158,23 +164,24 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
         
         <div class="title">הסכם שירות להחזרי מס</div>
         
-        <div class="content">
-          ${contractText.split('\n').map(line => {
-            const trimmedLine = line.trim();
-            if (!trimmedLine) return '<div style="height: 10px;"></div>';
-            if (trimmedLine.includes('הסכם שירות להחזרי מס')) return ''; // Skip title
-            if (trimmedLine === 'שטר חוב') {
-              return '<div class="promissory-note">שטר חוב</div><div class="promissory-content">';
-            }
-            if (/^\d+\./.test(trimmedLine)) return `<div class="numbered-section">${trimmedLine}</div>`;
-            if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
-              return `<div class="party-section">${trimmedLine}</div>`;
-            }
-            if (trimmedLine.includes('פרטי עושה השטר:')) {
-              return `<div class="numbered-section">${trimmedLine}</div>`;
-            }
-            return `<div class="content-section">${trimmedLine}</div>`;
-          }).join('')}
+        <div class="main-contract">
+          <div class="content">
+            ${contractText.split('\n').map(line => {
+              const trimmedLine = line.trim();
+              if (!trimmedLine) return '<div style="height: 10px;"></div>';
+              if (trimmedLine.includes('הסכם שירות להחזרי מס')) return ''; // Skip title
+              if (trimmedLine === 'שטר חוב') {
+                return '</div></div><div class="promissory-note">שטר חוב<div class="promissory-content">';
+              }
+              if (/^\d+\./.test(trimmedLine)) return `<div class="numbered-section">${trimmedLine}</div>`;
+              if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
+                return `<div class="party-section">${trimmedLine}</div>`;
+              }
+              if (trimmedLine.includes('פרטי עושה השטר:')) {
+                return `<div class="numbered-section">${trimmedLine}</div>`;
+              }
+              return `<div class="content-section">${trimmedLine}</div>`;
+            }).join('')}
           </div>
         </div>
         
