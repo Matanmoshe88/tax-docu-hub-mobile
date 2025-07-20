@@ -139,15 +139,14 @@ export const useSalesforceData = () => {
       });
 
       // Update client data with real Salesforce data
-      const nameParts = leadData.Name ? leadData.Name.split(' ') : ['', ''];
       const updatedClientData = {
-        firstName: nameParts[0] || '',
-        lastName: nameParts.slice(1).join(' ') || '',
-        idNumber: leadData.id__c || leadData.PersonalNumber__c || '',
+        firstName: leadData.FirstName || leadData.firstname__c || '',
+        lastName: leadData.LastName || leadData.SecName__c || '',
+        idNumber: leadData.PersonalNumber__c || leadData.IdNumber__c || leadData.TZ__c || '',
         phone: leadData.MobilePhone || leadData.PersonMobilePhone || leadData.Phone || '',
-        email: leadData.PersonEmail || leadData.Email || 'client@email.com',
-        address: leadData.fulladress__c || leadData.PersonMailingStreet || '',
-        commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : (leadData.commission_rate__c ? `${leadData.commission_rate__c}%` : '22%')
+        email: leadData.Email || leadData.PersonEmail || '',
+        address: leadData.Address || leadData.Street || leadData.PersonMailingStreet || '',
+        commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : '22%'
       };
 
       setClientData(updatedClientData);
