@@ -269,8 +269,10 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
   try {
     // Hide promissory note for main contract rendering
     const promissoryNote = tempDiv.querySelector('.promissory-note') as HTMLElement;
-    const promissoryDisplay = promissoryNote.style.display;
-    promissoryNote.style.display = 'none';
+    const promissoryDisplay = promissoryNote?.style.display || '';
+    if (promissoryNote) {
+      promissoryNote.style.display = 'none';
+    }
     
     // Render main contract
     const mainCanvas = await html2canvas(tempDiv.querySelector('.contract-container') as HTMLElement, {
@@ -288,11 +290,11 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
     const titleElement = tempDiv.querySelector('.title') as HTMLElement;
     const signatureElement = tempDiv.querySelector('.signature-section') as HTMLElement;
     
-    mainContract.style.display = 'none';
-    headerElement.style.display = 'none';
-    titleElement.style.display = 'none';
-    signatureElement.style.display = 'none';
-    promissoryNote.style.display = promissoryDisplay;
+    if (mainContract) mainContract.style.display = 'none';
+    if (headerElement) headerElement.style.display = 'none';
+    if (titleElement) titleElement.style.display = 'none';
+    if (signatureElement) signatureElement.style.display = 'none';
+    if (promissoryNote) promissoryNote.style.display = promissoryDisplay;
     
     // Render promissory note
     const promissoryCanvas = await html2canvas(tempDiv.querySelector('.contract-container') as HTMLElement, {
