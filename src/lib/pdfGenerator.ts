@@ -126,13 +126,15 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
         
         .promissory-note {
           page-break-before: always;
+          page-break-inside: avoid;
           text-align: center;
           font-size: 12px;
           font-weight: normal;
           margin-top: 0;
           padding-top: 50px;
-          min-height: 100vh;
-          page-break-inside: avoid;
+          min-height: 90vh;
+          height: auto;
+          break-inside: avoid;
         }
         
         .promissory-title {
@@ -140,6 +142,7 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
           font-weight: bold;
           text-align: center;
           margin-bottom: 30px;
+          page-break-after: avoid;
         }
         
         .promissory-content {
@@ -148,6 +151,9 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
           font-size: 12px;
           font-weight: normal;
           page-break-inside: avoid;
+          break-inside: avoid;
+          orphans: 5;
+          widows: 5;
         }
         
         .main-contract {
