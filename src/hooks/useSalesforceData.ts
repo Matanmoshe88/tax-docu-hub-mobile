@@ -24,13 +24,13 @@ interface SalesforceSession {
 export const useSalesforceData = () => {
   const { recordId } = useParams();
   const [clientData, setClientData] = useState<ClientData>({
-    firstName: "יוסי",
-    lastName: "כהן", 
-    idNumber: "123456789",
-    phone: "050-1234567",
-    email: "yossi.cohen@email.com",
-    address: "רחוב הרצל 1, תל אביב",
-    commissionRate: "25%"
+    firstName: "",
+    lastName: "", 
+    idNumber: "",
+    phone: "",
+    email: "",
+    address: "",
+    commissionRate: ""
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isDataFresh, setIsDataFresh] = useState(false);
@@ -139,6 +139,11 @@ export const useSalesforceData = () => {
       });
 
       // Update client data with real Salesforce data
+      console.log('🔍 Raw Salesforce leadData:', JSON.stringify(leadData, null, 2));
+      console.log('📋 Name fields:', { FirstName: leadData.FirstName, LastName: leadData.LastName, Name: leadData.Name });
+      console.log('🆔 ID fields:', { PersonalNumber__c: leadData.PersonalNumber__c, IdNumber__c: leadData.IdNumber__c, TZ__c: leadData.TZ__c });
+      console.log('🏠 Address fields:', { Address: leadData.Address, Street: leadData.Street, PersonMailingStreet: leadData.PersonMailingStreet });
+      
       const updatedClientData = {
         firstName: leadData.FirstName || leadData.firstname__c || '',
         lastName: leadData.LastName || leadData.SecName__c || '',
@@ -149,6 +154,7 @@ export const useSalesforceData = () => {
         commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : '22%'
       };
 
+      console.log('📊 Final updatedClientData being set:', updatedClientData);
       setClientData(updatedClientData);
 
       // Store Salesforce session data with timestamp
