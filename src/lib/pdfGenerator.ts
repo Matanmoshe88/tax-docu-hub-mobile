@@ -175,17 +175,17 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
   document.body.appendChild(tempDiv);
   
   try {
-    // Convert HTML to canvas with proper RTL support
+    // Convert HTML to canvas with compression settings
     const canvas = await html2canvas(tempDiv.querySelector('.contract-container') as HTMLElement, {
       allowTaint: true,
       useCORS: true,
-      scale: 2,
+      scale: 1.2, // Reduced scale for smaller file size
       backgroundColor: '#ffffff',
       width: 800,
       windowWidth: 800
     });
     
-    const imgData = canvas.toDataURL('image/png');
+    const imgData = canvas.toDataURL('image/jpeg', 0.7); // JPEG with 70% quality for compression
     
     // Create PDF from the canvas
     const pdf = new jsPDF({
@@ -201,14 +201,14 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
     let position = 0;
     
     // Add first page
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
     
     // Add additional pages if needed
     while (heightLeft >= 0) {
       position = heightLeft - imgHeight;
       pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
     }
     
