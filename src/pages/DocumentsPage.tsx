@@ -330,19 +330,7 @@ export const DocumentsPage: React.FC = () => {
       // Get signature from localStorage (saved in SignaturePage)
       const signature = localStorage.getItem(`signature-${recordId}`);
       
-      // Get client data from localStorage or use defaults
-      const storedClientData = localStorage.getItem(`clientData-${recordId}`);
-      const clientData = storedClientData ? JSON.parse(storedClientData) : {
-        firstName: 'יוסי',
-        lastName: 'כהן',
-        idNumber: '123456789',
-        phone: '050-1234567',
-        email: 'yossi.cohen@email.com',
-        address: 'רחוב הרצל 1, תל אביב',
-        commissionRate: '25%',
-      };
-
-      // Transform data to match new API structure
+      // Use the real clientData from Salesforce
       const contractData = {
         contractNumber: recordId || '12345',
         company: {
@@ -353,7 +341,10 @@ export const DocumentsPage: React.FC = () => {
         client: {
           name: `${clientData.firstName} ${clientData.lastName}`,
           id: clientData.idNumber,
-          address: clientData.address
+          phone: clientData.phone,
+          email: clientData.email,
+          address: clientData.address,
+          commissionRate: clientData.commissionRate
         },
         sections: [
           { title: 'סעיף 1 - השירות', content: 'החברה מתחייבת לבצע החזרי מס עבור הלקוח' },

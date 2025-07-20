@@ -180,7 +180,10 @@ export const SignaturePage: React.FC = () => {
       client: {
         name: `${clientData.firstName} ${clientData.lastName}`,
         id: clientData.idNumber,
-        address: clientData.address
+        phone: clientData.phone,
+        email: clientData.email,
+        address: clientData.address,
+        commissionRate: clientData.commissionRate
       },
       sections: [
         { title: 'סעיף 1 - השירות', content: 'החברה מתחייבת לבצע החזרי מס עבור הלקוח' },
