@@ -95,4 +95,5 @@ export const generateContractText = (clientData: ClientData): string => {
 כתובת: ${clientData.address}
 טלפון: ${clientData.phone}
 
+`;
 };
