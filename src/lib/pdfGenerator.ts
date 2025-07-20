@@ -215,6 +215,15 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
               if (trimmedLine === 'שטר חוב') {
                 return '</div></div><div class="page-break"></div><div class="promissory-note"><div class="promissory-title">שטר חוב</div><div class="promissory-content">';
               }
+              if (trimmedLine.includes('חתימת עושה השטר:')) {
+                return `<div class="content-section">${trimmedLine}</div>
+                        <div style="margin: 10px 0;">
+                          ${signatureDataURL ? 
+                            `<img src="${signatureDataURL}" style="width: 120px; height: 60px;" />` : 
+                            '<div style="height: 60px;"></div>'
+                          }
+                        </div>`;
+              }
               if (/^\d+\./.test(trimmedLine)) return `<div class="numbered-section">${trimmedLine}</div>`;
               if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
                 return `<div class="party-section">${trimmedLine}</div>`;
