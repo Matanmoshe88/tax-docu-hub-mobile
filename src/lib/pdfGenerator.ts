@@ -1,31 +1,45 @@
 import { jsPDF } from 'jspdf';
 import { generateContractText } from './contractUtils';
 
-// Add Hebrew font support to jsPDF
-const addHebrewFont = (doc: jsPDF) => {
-  // This uses the default font which has basic Hebrew support
-  // For better support, you'd need to add a custom Hebrew font
-  doc.setFont('helvetica');
+// Hebrew font support using proper embedding
+const addHebrewFont = async (doc: jsPDF) => {
+  try {
+    // Load the Hebrew font from public folder
+    const response = await fetch('/fonts/NotoSansHebrew-Regular.ttf');
+    const fontBuffer = await response.arrayBuffer();
+    const fontBase64 = btoa(String.fromCharCode(...new Uint8Array(fontBuffer)));
+    
+    // Add the font to jsPDF
+    doc.addFileToVFS('NotoSansHebrew-Regular.ttf', fontBase64);
+    doc.addFont('NotoSansHebrew-Regular.ttf', 'NotoSansHebrew', 'normal');
+    doc.setFont('NotoSansHebrew');
+  } catch (error) {
+    console.warn('Could not load Hebrew font, falling back to default');
+    // Fallback to default font
+    doc.setFont('helvetica');
+  }
 };
 
-// Helper to handle RTL text - simple approach
-const reverseHebrewWords = (text: string): string => {
-  // Split by spaces and reverse order for RTL effect
-  const words = text.split(' ');
+// Proper Hebrew text processing
+const processHebrewText = (text: string): string => {
+  // Simple approach for RTL - reverse the text for Hebrew content
   const hebrewPattern = /[\u0590-\u05FF]/;
   
-  // Only reverse if contains Hebrew
-  if (hebrewPattern.test(text)) {
-    return words.reverse().join(' ');
+  if (!hebrewPattern.test(text)) {
+    return text;
   }
-  return text;
+  
+  // For Hebrew text, we need to handle RTL properly
+  // This is a simplified approach - split by spaces and reverse words
+  const words = text.split(' ');
+  return words.reverse().join(' ');
 };
 
 export async function generateContractPDF(contractData: any, signatureDataURL: string) {
-  console.log('🎯 Starting PDF generation with jsPDF for Hebrew support');
+  console.log('🎯 Starting PDF generation with Hebrew support');
   console.log('Contract data received:', contractData);
   
-  // Extract client data - handle multiple possible structures
+  // Extract client data
   const clientData = {
     firstName: contractData.firstName || 
                contractData.client?.firstName || 
@@ -61,7 +75,7 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   });
   
   // Add Hebrew font support
-  addHebrewFont(doc);
+  await addHebrewFont(doc);
   
   // Get contract text
   const contractText = generateContractText(clientData);
@@ -84,7 +98,6 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
     yOffset: number = 0
   ) => {
     doc.setFontSize(fontSize);
-    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
     
     // Calculate x position based on alignment
     let xPos = rightMargin;
@@ -107,16 +120,16 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
     const splitText = doc.splitTextToSize(text, maxWidth);
     
     // Add each line
-    splitText.forEach((line: string, index: number) => {
+    splitText.forEach((line: string) => {
       if (yPosition > pageHeight - margin) {
         doc.addPage();
         yPosition = margin + 10;
       }
       
-      // For Hebrew text, we need to handle RTL
-      const processedLine = reverseHebrewWords(line);
+      // Process Hebrew text for RTL
+      const processedLine = processHebrewText(line);
       doc.text(processedLine, xPos, yPosition, { align });
-      yPosition += fontSize * 0.5;
+      yPosition += fontSize * 0.6;
     });
     
     return yPosition;
@@ -131,13 +144,11 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   const dateText = `תאריך: ${currentDate}`;
   const contractNumText = `מספר חוזה: ${clientData.contractNumber || '___________'}`;
   
-  doc.text(reverseHebrewWords(dateText), rightMargin, yPosition, { align: 'right' });
-  doc.text(reverseHebrewWords(contractNumText), margin, yPosition, { align: 'left' });
+  doc.text(processHebrewText(dateText), rightMargin, yPosition, { align: 'right' });
+  doc.text(processHebrewText(contractNumText), margin, yPosition, { align: 'left' });
   yPosition += 15;
   
   // Process contract content
-  let inPromissoryNote = false;
-  
   lines.forEach((line, index) => {
     const trimmedLine = line.trim();
     
@@ -159,7 +170,6 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
       yPosition = margin + 10;
       yPosition = addRTLText('שטר חוב', 18, true, 'center', 0);
       yPosition += 10;
-      inPromissoryNote = true;
     } else if (/^\d+\./.test(trimmedLine)) {
       // Numbered sections
       yPosition = addRTLText(trimmedLine, 12, true, 'right', 8);
@@ -185,9 +195,11 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   
   // Signature title
   doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('חתימת הלקוח:', rightMargin, yPosition, { align: 'right' });
-  doc.text('תאריך:', margin + 80, yPosition, { align: 'right' });
+  const signatureText = processHebrewText('חתימת הלקוח:');
+  const dateLabel = processHebrewText('תאריך:');
+  
+  doc.text(signatureText, rightMargin, yPosition, { align: 'right' });
+  doc.text(dateLabel, margin + 80, yPosition, { align: 'right' });
   
   yPosition += 10;
   
@@ -207,7 +219,6 @@ export async function generateContractPDF(contractData: any, signatureDataURL: s
   }
   
   // Add date
-  doc.setFont('helvetica', 'normal');
   doc.text(currentDate, margin + 80, yPosition + 20, { align: 'right' });
   
   // Save the PDF
@@ -223,7 +234,7 @@ export async function createAndDownloadPDF(contractData: any, signatureDataURL: 
 }
 
 export async function generateContractPDFBlob(contractData: any, signatureDataURL: string): Promise<Blob> {
-  console.log('🎯 Generating PDF blob');
+  console.log('🎯 Generating PDF blob with Hebrew support');
   
   // Same implementation but without save()
   const clientData = {
@@ -257,7 +268,7 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
     format: 'a4'
   });
   
-  addHebrewFont(doc);
+  await addHebrewFont(doc);
   
   const contractText = generateContractText(clientData);
   const lines = contractText.split('\n');
@@ -277,7 +288,6 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
     yOffset: number = 0
   ) => {
     doc.setFontSize(fontSize);
-    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
     
     let xPos = rightMargin;
     if (align === 'center') {
@@ -296,15 +306,15 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
     const maxWidth = pageWidth - (2 * margin);
     const splitText = doc.splitTextToSize(text, maxWidth);
     
-    splitText.forEach((line: string, index: number) => {
+    splitText.forEach((line: string) => {
       if (yPosition > pageHeight - margin) {
         doc.addPage();
         yPosition = margin + 10;
       }
       
-      const processedLine = reverseHebrewWords(line);
+      const processedLine = processHebrewText(line);
       doc.text(processedLine, xPos, yPosition, { align });
-      yPosition += fontSize * 0.5;
+      yPosition += fontSize * 0.6;
     });
     
     return yPosition;
@@ -317,11 +327,9 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   const dateText = `תאריך: ${currentDate}`;
   const contractNumText = `מספר חוזה: ${clientData.contractNumber || '___________'}`;
   
-  doc.text(reverseHebrewWords(dateText), rightMargin, yPosition, { align: 'right' });
-  doc.text(reverseHebrewWords(contractNumText), margin, yPosition, { align: 'left' });
+  doc.text(processHebrewText(dateText), rightMargin, yPosition, { align: 'right' });
+  doc.text(processHebrewText(contractNumText), margin, yPosition, { align: 'left' });
   yPosition += 15;
-  
-  let inPromissoryNote = false;
   
   lines.forEach((line, index) => {
     const trimmedLine = line.trim();
@@ -340,7 +348,6 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
       yPosition = margin + 10;
       yPosition = addRTLText('שטר חוב', 18, true, 'center', 0);
       yPosition += 10;
-      inPromissoryNote = true;
     } else if (/^\d+\./.test(trimmedLine)) {
       yPosition = addRTLText(trimmedLine, 12, true, 'right', 8);
     } else if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
@@ -360,9 +367,11 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
   yPosition += 20;
   
   doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('חתימת הלקוח:', rightMargin, yPosition, { align: 'right' });
-  doc.text('תאריך:', margin + 80, yPosition, { align: 'right' });
+  const signatureText = processHebrewText('חתימת הלקוח:');
+  const dateLabel = processHebrewText('תאריך:');
+  
+  doc.text(signatureText, rightMargin, yPosition, { align: 'right' });
+  doc.text(dateLabel, margin + 80, yPosition, { align: 'right' });
   
   yPosition += 10;
   
@@ -377,7 +386,6 @@ export async function generateContractPDFBlob(contractData: any, signatureDataUR
     doc.line(rightMargin - 60, yPosition + 20, rightMargin, yPosition + 20);
   }
   
-  doc.setFont('helvetica', 'normal');
   doc.text(currentDate, margin + 80, yPosition + 20, { align: 'right' });
   
   return doc.output('blob');
