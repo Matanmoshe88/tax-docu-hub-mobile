@@ -198,10 +198,11 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
         <div class="signature-section">
           <div>
             <div>חתימת הלקוח:</div>
-          ${signatureDataURL ? 
-            `<img src="${signatureDataURL}" style="width: 150px; height: 45px; position: relative; top: -25px; right: 20px;" />` : 
-            '<div class="signature-line"></div>'
-          }
+            ${signatureDataURL ? 
+              `<img src="${signatureDataURL}" style="width: 150px; height: 75px; border: 1px solid #ccc;" />` : 
+              '<div class="signature-line"></div>'
+            }
+            }
           </div>
           <div class="date-section">
             <div>תאריך:</div>
