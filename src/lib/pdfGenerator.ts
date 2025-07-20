@@ -219,8 +219,8 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
                 return `<div class="content-section">${trimmedLine}</div>
                         <div style="margin: 10px 0;">
                           ${signatureDataURL ? 
-                            `<img src="${signatureDataURL}" style="width: 120px; height: 60px;" />` : 
-                            '<div style="height: 60px;"></div>'
+                            `<img src="${signatureDataURL}" style="width: 200px; height: 100px;" />` : 
+                            '<div style="height: 100px;"></div>'
                           }
                         </div>`;
               }
@@ -233,6 +233,15 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
               }
               return `<div class="content-section">${trimmedLine}</div>`;
             }).join('')}
+          </div>
+          
+          <!-- Add signature at bottom of contract -->
+          <div style="margin-top: 40px; margin-bottom: 30px;">
+            <div style="margin-bottom: 10px;">חתימת הלקוח:</div>
+            ${signatureDataURL ? 
+              `<img src="${signatureDataURL}" style="width: 200px; height: 100px; border: 1px solid #ccc;" />` : 
+              '<div style="border-bottom: 1px solid black; width: 200px; height: 100px;"></div>'
+            }
           </div>
         </div>
         
@@ -270,11 +279,13 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
             
             <div style="height: 30px;"></div>
             
-            <div class="content-section">חתימת עושה השטר: _________________________</div>
+            <div style="display: flex; align-items: center; gap: 20px;">
+              <span>חתימת עושה השטר: _________________________</span>
               ${signatureDataURL ? 
-                `<img src="${signatureDataURL}" style="width: 120px; height: 60px; margin-left: 20px;" />` : 
+                `<img src="${signatureDataURL}" style="width: 200px; height: 100px;" />` : 
                 ''
               }
+            </div>
             </div>
           </div>
         </div>
@@ -283,7 +294,7 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
           <div>
             <div>חתימת הלקוח:</div>
             ${signatureDataURL ? 
-              `<img src="${signatureDataURL}" style="width: 150px; height: 75px; border: 1px solid #ccc;" />` : 
+              `<img src="${signatureDataURL}" style="width: 200px; height: 100px; border: 1px solid #ccc;" />` : 
               '<div class="signature-line"></div>'
             }
           </div>
