@@ -1,255 +1,221 @@
-import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { jsPDF } from 'jspdf';
 import { generateContractText } from './contractUtils';
 
-// Configure pdfMake with fonts
-pdfMake.vfs = pdfFonts.vfs;
-
-// Use only Roboto font which has basic Hebrew support
-pdfMake.fonts = {
-  Roboto: {
-    normal: 'Roboto-Regular.ttf',
-    bold: 'Roboto-Medium.ttf',
-    italics: 'Roboto-Italic.ttf',
-    bolditalics: 'Roboto-MediumItalic.ttf'
-  }
+// Add Hebrew font support to jsPDF
+const addHebrewFont = (doc: jsPDF) => {
+  // This uses the default font which has basic Hebrew support
+  // For better support, you'd need to add a custom Hebrew font
+  doc.setFont('helvetica');
 };
 
-// Helper function to process Hebrew text
-function processHebrewText(text: string): string {
-  if (!text || typeof text !== 'string') {
-    return '';
+// Helper to handle RTL text - simple approach
+const reverseHebrewWords = (text: string): string => {
+  // Split by spaces and reverse order for RTL effect
+  const words = text.split(' ');
+  const hebrewPattern = /[\u0590-\u05FF]/;
+  
+  // Only reverse if contains Hebrew
+  if (hebrewPattern.test(text)) {
+    return words.reverse().join(' ');
   }
-  
-  // Replace undefined values with underscores
-  let processedText = text.replace(/undefined/g, '_________');
-  
-  // Don't manipulate Hebrew text - let pdfmake handle RTL
-  return processedText;
-}
-
-// Helper function to create content blocks
-function createContentBlock(text: string, style: string = 'body'): any {
-  const processedText = processHebrewText(text);
-  
-  return {
-    text: processedText,
-    style: style
-  };
-}
+  return text;
+};
 
 export async function generateContractPDF(contractData: any, signatureDataURL: string) {
-  console.log('🎯 Starting PDF generation with pdfMake');
+  console.log('🎯 Starting PDF generation with jsPDF for Hebrew support');
+  console.log('Contract data received:', contractData);
   
-  // Ensure contractData has all required fields
+  // Extract client data - handle multiple possible structures
   const clientData = {
-    firstName: contractData.firstName || contractData.client?.firstName || '',
-    lastName: contractData.lastName || contractData.client?.lastName || '',
-    idNumber: contractData.idNumber || contractData.client?.idNumber || '',
-    phone: contractData.phone || contractData.client?.phone || '',
-    email: contractData.email || contractData.client?.email || '',
-    address: contractData.address || contractData.client?.address || '',
-    commissionRate: contractData.commissionRate || contractData.client?.commissionRate || '25%',
+    firstName: contractData.firstName || 
+               contractData.client?.firstName || 
+               contractData.clientData?.firstName || '',
+    lastName: contractData.lastName || 
+              contractData.client?.lastName || 
+              contractData.clientData?.lastName || '',
+    idNumber: contractData.idNumber || 
+              contractData.client?.idNumber || 
+              contractData.clientData?.idNumber || '',
+    phone: contractData.phone || 
+           contractData.client?.phone || 
+           contractData.clientData?.phone || '',
+    email: contractData.email || 
+           contractData.client?.email || 
+           contractData.clientData?.email || '',
+    address: contractData.address || 
+             contractData.client?.address || 
+             contractData.clientData?.address || '',
+    commissionRate: contractData.commissionRate || 
+                    contractData.client?.commissionRate || 
+                    contractData.clientData?.commissionRate || '25%',
     contractNumber: contractData.contractNumber || ''
   };
   
-  console.log('Client data:', clientData);
+  console.log('Extracted client data:', clientData);
   
-  const contractText = generateContractText(clientData);
-  const lines = contractText.split('\n');
-  
-  // Current date
-  const currentDate = new Date().toLocaleDateString('he-IL');
-  
-  // Document definition
-  const docDefinition: any = {
-    pageSize: 'A4',
-    pageMargins: [40, 50, 40, 50],
-    
-    // Default style for all content
-    defaultStyle: {
-      font: 'Roboto',
-      fontSize: 12,
-      alignment: 'right',
-      direction: 'rtl',
-      leadingIndent: 0,
-      lineHeight: 1.6
-    },
-    
-    // Custom styles
-    styles: {
-      header: {
-        fontSize: 20,
-        bold: true,
-        alignment: 'center',
-        margin: [0, 0, 0, 30]
-      },
-      subheader: {
-        fontSize: 16,
-        bold: true,
-        alignment: 'right',
-        margin: [0, 15, 0, 10]
-      },
-      body: {
-        fontSize: 12,
-        alignment: 'right',
-        lineHeight: 1.6,
-        margin: [0, 0, 0, 10]
-      },
-      parties: {
-        fontSize: 14,
-        bold: true,
-        alignment: 'right',
-        margin: [0, 10, 0, 10]
-      },
-      numbered: {
-        fontSize: 12,
-        bold: true,
-        alignment: 'right',
-        margin: [0, 15, 0, 5]
-      },
-      promissoryTitle: {
-        fontSize: 18,
-        bold: true,
-        alignment: 'center',
-        margin: [0, 30, 0, 20],
-        pageBreak: 'before'
-      }
-    },
-    
-    content: []
-  };
-
-  // Build content array
-  const content: any[] = [];
-  
-  // Title
-  content.push(createContentBlock('הסכם שירות להחזרי מס', 'header'));
-  
-  // Date and contract number
-  content.push({
-    columns: [
-      { text: processHebrewText(`תאריך: ${currentDate}`), width: '*', alignment: 'right' },
-      { text: processHebrewText(`מספר חוזה: ${clientData.contractNumber || '___________'}`), width: '*', alignment: 'right' }
-    ],
-    margin: [0, 0, 0, 30]
+  // Create new PDF
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
   });
   
-  // Process contract content line by line
+  // Add Hebrew font support
+  addHebrewFont(doc);
+  
+  // Get contract text
+  const contractText = generateContractText(clientData);
+  const lines = contractText.split('\n');
+  const currentDate = new Date().toLocaleDateString('he-IL');
+  
+  // Page settings
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  const rightMargin = pageWidth - margin;
+  let yPosition = margin + 10;
+  
+  // Helper function to add RTL text
+  const addRTLText = (
+    text: string, 
+    fontSize: number = 12, 
+    isBold: boolean = false,
+    align: 'right' | 'center' | 'left' = 'right',
+    yOffset: number = 0
+  ) => {
+    doc.setFontSize(fontSize);
+    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+    
+    // Calculate x position based on alignment
+    let xPos = rightMargin;
+    if (align === 'center') {
+      xPos = pageWidth / 2;
+    } else if (align === 'left') {
+      xPos = margin;
+    }
+    
+    // Check if we need a new page
+    if (yPosition + yOffset > pageHeight - margin) {
+      doc.addPage();
+      yPosition = margin + 10;
+    }
+    
+    yPosition += yOffset;
+    
+    // Split long lines
+    const maxWidth = pageWidth - (2 * margin);
+    const splitText = doc.splitTextToSize(text, maxWidth);
+    
+    // Add each line
+    splitText.forEach((line: string, index: number) => {
+      if (yPosition > pageHeight - margin) {
+        doc.addPage();
+        yPosition = margin + 10;
+      }
+      
+      // For Hebrew text, we need to handle RTL
+      const processedLine = reverseHebrewWords(line);
+      doc.text(processedLine, xPos, yPosition, { align });
+      yPosition += fontSize * 0.5;
+    });
+    
+    return yPosition;
+  };
+  
+  // Add title
+  yPosition = addRTLText('הסכם שירות להחזרי מס', 20, true, 'center', 0);
+  yPosition += 10;
+  
+  // Add date and contract number
+  doc.setFontSize(12);
+  const dateText = `תאריך: ${currentDate}`;
+  const contractNumText = `מספר חוזה: ${clientData.contractNumber || '___________'}`;
+  
+  doc.text(reverseHebrewWords(dateText), rightMargin, yPosition, { align: 'right' });
+  doc.text(reverseHebrewWords(contractNumText), margin, yPosition, { align: 'left' });
+  yPosition += 15;
+  
+  // Process contract content
   let inPromissoryNote = false;
   
-  lines.forEach((line: string, index: number) => {
+  lines.forEach((line, index) => {
     const trimmedLine = line.trim();
     
-    // Skip the title line we already added
+    // Skip empty lines
+    if (!trimmedLine) {
+      yPosition += 5;
+      return;
+    }
+    
+    // Skip title line
     if (index === 0 && trimmedLine.includes('הסכם שירות להחזרי מס')) {
       return;
     }
     
-    if (!trimmedLine) {
-      // Empty line - add space
-      content.push({ text: '', margin: [0, 5, 0, 0] });
-    } else if (trimmedLine === 'שטר חוב') {
-      // Promissory note title - start new page
+    // Handle different line types
+    if (trimmedLine === 'שטר חוב') {
+      // Add new page for promissory note
+      doc.addPage();
+      yPosition = margin + 10;
+      yPosition = addRTLText('שטר חוב', 18, true, 'center', 0);
+      yPosition += 10;
       inPromissoryNote = true;
-      content.push({
-        text: 'שטר חוב',
-        style: 'promissoryTitle',
-        pageBreak: 'before'
-      });
     } else if (/^\d+\./.test(trimmedLine)) {
-      // Numbered section
-      content.push(createContentBlock(trimmedLine, 'numbered'));
+      // Numbered sections
+      yPosition = addRTLText(trimmedLine, 12, true, 'right', 8);
     } else if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
       // Party sections
-      content.push(createContentBlock(trimmedLine, 'parties'));
-    } else if (trimmedLine.startsWith('הואיל')) {
-      // Whereas clauses
-      content.push(createContentBlock(trimmedLine, 'body'));
-    } else if (inPromissoryNote && trimmedLine.includes('פרטי עושה השטר:')) {
-      // Promissory note details section
-      content.push({ text: '', margin: [0, 20, 0, 0] });
-      content.push(createContentBlock(trimmedLine, 'subheader'));
+      yPosition = addRTLText(trimmedLine, 14, true, 'right', 8);
+    } else if (trimmedLine.includes('פרטי עושה השטר:')) {
+      // Promissory note details
+      yPosition = addRTLText(trimmedLine, 14, true, 'right', 15);
     } else {
       // Regular text
-      content.push(createContentBlock(trimmedLine, 'body'));
+      yPosition = addRTLText(trimmedLine, 12, false, 'right', 5);
     }
   });
   
   // Add signature section
-  content.push({ text: '', margin: [0, 40, 0, 0] }); // Space before signatures
+  if (yPosition > pageHeight - 60) {
+    doc.addPage();
+    yPosition = margin + 10;
+  }
   
+  yPosition += 20;
+  
+  // Signature title
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('חתימת הלקוח:', rightMargin, yPosition, { align: 'right' });
+  doc.text('תאריך:', margin + 80, yPosition, { align: 'right' });
+  
+  yPosition += 10;
+  
+  // Add signature or line
   if (signatureDataURL) {
-    content.push({
-      columns: [
-        {
-          stack: [
-            { text: 'חתימת הלקוח:', style: 'parties' },
-            {
-              image: signatureDataURL,
-              width: 150,
-              height: 75,
-              margin: [0, 10, 0, 0]
-            }
-          ],
-          width: '50%'
-        },
-        {
-          stack: [
-            { text: 'תאריך:', style: 'parties' },
-            { text: currentDate, margin: [0, 20, 0, 0] }
-          ],
-          width: '50%'
-        }
-      ]
-    });
+    try {
+      // Add signature image
+      doc.addImage(signatureDataURL, 'PNG', rightMargin - 60, yPosition, 60, 30);
+    } catch (error) {
+      console.error('Error adding signature:', error);
+      // Draw line as fallback
+      doc.line(rightMargin - 60, yPosition + 20, rightMargin, yPosition + 20);
+    }
   } else {
-    content.push({
-      columns: [
-        {
-          stack: [
-            { text: 'חתימת הלקוח:', style: 'parties' },
-            { text: '_______________________', margin: [0, 20, 0, 0] }
-          ],
-          width: '50%'
-        },
-        {
-          stack: [
-            { text: 'תאריך:', style: 'parties' },
-            { text: '_______________________', margin: [0, 20, 0, 0] }
-          ],
-          width: '50%'
-        }
-      ]
-    });
+    // Draw signature line
+    doc.line(rightMargin - 60, yPosition + 20, rightMargin, yPosition + 20);
   }
   
-  docDefinition.content = content;
+  // Add date
+  doc.setFont('helvetica', 'normal');
+  doc.text(currentDate, margin + 80, yPosition + 20, { align: 'right' });
   
-  // Generate and download PDF
-  try {
-    const pdfDocGenerator = pdfMake.createPdf(docDefinition);
-    
-    return new Promise<Blob>((resolve, reject) => {
-      pdfDocGenerator.getBlob((blob: Blob) => {
-        // Create download link
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `contract_${clientData.idNumber || 'client'}_${Date.now()}.pdf`;
-        link.click();
-        
-        // Clean up
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-        
-        console.log('✅ PDF generated and downloaded successfully');
-        resolve(blob);
-      });
-    });
-  } catch (error) {
-    console.error('❌ PDF generation failed:', error);
-    throw error;
-  }
+  // Save the PDF
+  const fileName = `contract_${clientData.idNumber || 'client'}_${Date.now()}.pdf`;
+  doc.save(fileName);
+  
+  // Return as blob
+  return doc.output('blob');
 }
 
 export async function createAndDownloadPDF(contractData: any, signatureDataURL: string) {
@@ -257,184 +223,162 @@ export async function createAndDownloadPDF(contractData: any, signatureDataURL: 
 }
 
 export async function generateContractPDFBlob(contractData: any, signatureDataURL: string): Promise<Blob> {
-  console.log('🎯 Starting PDF blob generation');
+  console.log('🎯 Generating PDF blob');
   
-  // Same implementation as above but return blob only
+  // Same implementation but without save()
   const clientData = {
-    firstName: contractData.firstName || contractData.client?.firstName || '',
-    lastName: contractData.lastName || contractData.client?.lastName || '',
-    idNumber: contractData.idNumber || contractData.client?.idNumber || '',
-    phone: contractData.phone || contractData.client?.phone || '',
-    email: contractData.email || contractData.client?.email || '',
-    address: contractData.address || contractData.client?.address || '',
-    commissionRate: contractData.commissionRate || contractData.client?.commissionRate || '25%',
+    firstName: contractData.firstName || 
+               contractData.client?.firstName || 
+               contractData.clientData?.firstName || '',
+    lastName: contractData.lastName || 
+              contractData.client?.lastName || 
+              contractData.clientData?.lastName || '',
+    idNumber: contractData.idNumber || 
+              contractData.client?.idNumber || 
+              contractData.clientData?.idNumber || '',
+    phone: contractData.phone || 
+           contractData.client?.phone || 
+           contractData.clientData?.phone || '',
+    email: contractData.email || 
+           contractData.client?.email || 
+           contractData.clientData?.email || '',
+    address: contractData.address || 
+             contractData.client?.address || 
+             contractData.clientData?.address || '',
+    commissionRate: contractData.commissionRate || 
+                    contractData.client?.commissionRate || 
+                    contractData.clientData?.commissionRate || '25%',
     contractNumber: contractData.contractNumber || ''
   };
+  
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+  
+  addHebrewFont(doc);
   
   const contractText = generateContractText(clientData);
   const lines = contractText.split('\n');
   const currentDate = new Date().toLocaleDateString('he-IL');
   
-  const docDefinition: any = {
-    pageSize: 'A4',
-    pageMargins: [40, 50, 40, 50],
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  const rightMargin = pageWidth - margin;
+  let yPosition = margin + 10;
+  
+  const addRTLText = (
+    text: string, 
+    fontSize: number = 12, 
+    isBold: boolean = false,
+    align: 'right' | 'center' | 'left' = 'right',
+    yOffset: number = 0
+  ) => {
+    doc.setFontSize(fontSize);
+    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
     
-    defaultStyle: {
-      font: 'Roboto',
-      fontSize: 12,
-      alignment: 'right',
-      direction: 'rtl',
-      leadingIndent: 0,
-      lineHeight: 1.6
-    },
+    let xPos = rightMargin;
+    if (align === 'center') {
+      xPos = pageWidth / 2;
+    } else if (align === 'left') {
+      xPos = margin;
+    }
     
-    styles: {
-      header: {
-        fontSize: 20,
-        bold: true,
-        alignment: 'center',
-        margin: [0, 0, 0, 30]
-      },
-      subheader: {
-        fontSize: 16,
-        bold: true,
-        alignment: 'right',
-        margin: [0, 15, 0, 10]
-      },
-      body: {
-        fontSize: 12,
-        alignment: 'right',
-        lineHeight: 1.6,
-        margin: [0, 0, 0, 10]
-      },
-      parties: {
-        fontSize: 14,
-        bold: true,
-        alignment: 'right',
-        margin: [0, 10, 0, 10]
-      },
-      numbered: {
-        fontSize: 12,
-        bold: true,
-        alignment: 'right',
-        margin: [0, 15, 0, 5]
-      },
-      promissoryTitle: {
-        fontSize: 18,
-        bold: true,
-        alignment: 'center',
-        margin: [0, 30, 0, 20],
-        pageBreak: 'before'
+    if (yPosition + yOffset > pageHeight - margin) {
+      doc.addPage();
+      yPosition = margin + 10;
+    }
+    
+    yPosition += yOffset;
+    
+    const maxWidth = pageWidth - (2 * margin);
+    const splitText = doc.splitTextToSize(text, maxWidth);
+    
+    splitText.forEach((line: string, index: number) => {
+      if (yPosition > pageHeight - margin) {
+        doc.addPage();
+        yPosition = margin + 10;
       }
-    },
+      
+      const processedLine = reverseHebrewWords(line);
+      doc.text(processedLine, xPos, yPosition, { align });
+      yPosition += fontSize * 0.5;
+    });
     
-    content: []
+    return yPosition;
   };
-
-  const content: any[] = [];
   
-  content.push(createContentBlock('הסכם שירות להחזרי מס', 'header'));
+  yPosition = addRTLText('הסכם שירות להחזרי מס', 20, true, 'center', 0);
+  yPosition += 10;
   
-  content.push({
-    columns: [
-      { text: processHebrewText(`תאריך: ${currentDate}`), width: '*', alignment: 'right' },
-      { text: processHebrewText(`מספר חוזה: ${clientData.contractNumber || '___________'}`), width: '*', alignment: 'right' }
-    ],
-    margin: [0, 0, 0, 30]
-  });
+  doc.setFontSize(12);
+  const dateText = `תאריך: ${currentDate}`;
+  const contractNumText = `מספר חוזה: ${clientData.contractNumber || '___________'}`;
+  
+  doc.text(reverseHebrewWords(dateText), rightMargin, yPosition, { align: 'right' });
+  doc.text(reverseHebrewWords(contractNumText), margin, yPosition, { align: 'left' });
+  yPosition += 15;
   
   let inPromissoryNote = false;
   
-  lines.forEach((line: string, index: number) => {
+  lines.forEach((line, index) => {
     const trimmedLine = line.trim();
+    
+    if (!trimmedLine) {
+      yPosition += 5;
+      return;
+    }
     
     if (index === 0 && trimmedLine.includes('הסכם שירות להחזרי מס')) {
       return;
     }
     
-    if (!trimmedLine) {
-      content.push({ text: '', margin: [0, 5, 0, 0] });
-    } else if (trimmedLine === 'שטר חוב') {
+    if (trimmedLine === 'שטר חוב') {
+      doc.addPage();
+      yPosition = margin + 10;
+      yPosition = addRTLText('שטר חוב', 18, true, 'center', 0);
+      yPosition += 10;
       inPromissoryNote = true;
-      content.push({
-        text: 'שטר חוב',
-        style: 'promissoryTitle',
-        pageBreak: 'before'
-      });
     } else if (/^\d+\./.test(trimmedLine)) {
-      content.push(createContentBlock(trimmedLine, 'numbered'));
+      yPosition = addRTLText(trimmedLine, 12, true, 'right', 8);
     } else if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
-      content.push(createContentBlock(trimmedLine, 'parties'));
-    } else if (trimmedLine.startsWith('הואיל')) {
-      content.push(createContentBlock(trimmedLine, 'body'));
-    } else if (inPromissoryNote && trimmedLine.includes('פרטי עושה השטר:')) {
-      content.push({ text: '', margin: [0, 20, 0, 0] });
-      content.push(createContentBlock(trimmedLine, 'subheader'));
+      yPosition = addRTLText(trimmedLine, 14, true, 'right', 8);
+    } else if (trimmedLine.includes('פרטי עושה השטר:')) {
+      yPosition = addRTLText(trimmedLine, 14, true, 'right', 15);
     } else {
-      content.push(createContentBlock(trimmedLine, 'body'));
+      yPosition = addRTLText(trimmedLine, 12, false, 'right', 5);
     }
   });
   
-  content.push({ text: '', margin: [0, 40, 0, 0] });
+  if (yPosition > pageHeight - 60) {
+    doc.addPage();
+    yPosition = margin + 10;
+  }
+  
+  yPosition += 20;
+  
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('חתימת הלקוח:', rightMargin, yPosition, { align: 'right' });
+  doc.text('תאריך:', margin + 80, yPosition, { align: 'right' });
+  
+  yPosition += 10;
   
   if (signatureDataURL) {
-    content.push({
-      columns: [
-        {
-          stack: [
-            { text: 'חתימת הלקוח:', style: 'parties' },
-            {
-              image: signatureDataURL,
-              width: 150,
-              height: 75,
-              margin: [0, 10, 0, 0]
-            }
-          ],
-          width: '50%'
-        },
-        {
-          stack: [
-            { text: 'תאריך:', style: 'parties' },
-            { text: currentDate, margin: [0, 20, 0, 0] }
-          ],
-          width: '50%'
-        }
-      ]
-    });
+    try {
+      doc.addImage(signatureDataURL, 'PNG', rightMargin - 60, yPosition, 60, 30);
+    } catch (error) {
+      console.error('Error adding signature:', error);
+      doc.line(rightMargin - 60, yPosition + 20, rightMargin, yPosition + 20);
+    }
   } else {
-    content.push({
-      columns: [
-        {
-          stack: [
-            { text: 'חתימת הלקוח:', style: 'parties' },
-            { text: '_______________________', margin: [0, 20, 0, 0] }
-          ],
-          width: '50%'
-        },
-        {
-          stack: [
-            { text: 'תאריך:', style: 'parties' },
-            { text: '_______________________', margin: [0, 20, 0, 0] }
-          ],
-          width: '50%'
-        }
-      ]
-    });
+    doc.line(rightMargin - 60, yPosition + 20, rightMargin, yPosition + 20);
   }
   
-  docDefinition.content = content;
+  doc.setFont('helvetica', 'normal');
+  doc.text(currentDate, margin + 80, yPosition + 20, { align: 'right' });
   
-  try {
-    const pdfDocGenerator = pdfMake.createPdf(docDefinition);
-    
-    return new Promise<Blob>((resolve, reject) => {
-      pdfDocGenerator.getBlob((blob: Blob) => {
-        console.log('✅ PDF blob generated successfully');
-        resolve(blob);
-      });
-    });
-  } catch (error) {
-    console.error('❌ PDF blob generation failed:', error);
-    throw error;
-  }
+  return doc.output('blob');
 }
