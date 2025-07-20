@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PortalLayout } from '@/components/PortalLayout';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PenTool, RotateCcw, Check, Upload } from 'lucide-react';
@@ -17,6 +18,7 @@ export const SignaturePage: React.FC = () => {
   const [hasSignature, setHasSignature] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSigned, setIsSigned] = useState(false);
+  const [showLoading, setShowLoading] = useState(false);
   const { toast } = useToast();
 
   // Disable browser back button completely
@@ -233,6 +235,7 @@ export const SignaturePage: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    setShowLoading(true);
     
     try {
       console.log('🚀 Starting signature submission process...');
@@ -300,7 +303,9 @@ export const SignaturePage: React.FC = () => {
         description: "החתימה נשלחה למערכת והמעבר לשלב הבא",
       });
       
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Keep loading animation for a moment before navigation
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setShowLoading(false);
       navigate(`/documents/${recordId}`);
       
     } catch (error) {
@@ -313,6 +318,7 @@ export const SignaturePage: React.FC = () => {
       });
     } finally {
       setIsSubmitting(false);
+      setShowLoading(false);
     }
   };
 
@@ -321,7 +327,9 @@ export const SignaturePage: React.FC = () => {
   };
 
   return (
-    <PortalLayout
+    <>
+      <LoadingOverlay isVisible={showLoading} />
+      <PortalLayout
       currentStep={2}
       totalSteps={4}
       onNext={handleNext}
@@ -410,5 +418,6 @@ export const SignaturePage: React.FC = () => {
         </Card>
       </div>
     </PortalLayout>
+    </>
   );
 };

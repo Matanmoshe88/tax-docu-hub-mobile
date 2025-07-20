@@ -127,6 +127,14 @@ export default {
 					'50%': {
 						boxShadow: '0 0 30px hsl(var(--primary) / 0.5)'
 					}
+				},
+				'orbit': {
+					'0%': { 
+						transform: 'rotate(0deg) translateX(60px) rotate(0deg)' 
+					},
+					'100%': { 
+						transform: 'rotate(360deg) translateX(60px) rotate(-360deg)' 
+					}
 				}
 			},
 			animation: {
@@ -134,7 +142,11 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'fade-in': 'fade-in 0.3s ease-out',
 				'scale-in': 'scale-in 0.2s ease-out',
-				'pulse-glow': 'pulse-glow 2s ease-in-out infinite'
+				'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+				'orbit-1': 'orbit 3s linear infinite',
+				'orbit-2': 'orbit 3s linear infinite 0.75s',
+				'orbit-3': 'orbit 3s linear infinite 1.5s',
+				'orbit-4': 'orbit 3s linear infinite 2.25s'
 			},
 			backgroundImage: {
 				'gradient-primary': 'var(--gradient-primary)',
