@@ -236,6 +236,59 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
           </div>
         </div>
         
+        <div class="page-break"></div>
+        
+        <div class="promissory-note">
+          <div class="promissory-title">שטר חוב</div>
+          <div class="promissory-subtitle">שטר חוב להבטחת ביצוע התחייבויות הלקוח</div>
+          
+          <div class="promissory-content">
+            <div class="content-section"><strong>שטר חוב</strong></div>
+            <div class="content-section">שנערך ונחתם ביום ${currentDate}</div>
+            <div class="content-section">אני הח"מ ${clientData.firstName} ${clientData.lastName} ת"ז ${clientData.idNumber} מתחייב/ת לשלם לפקודת ג'י.אי.אמ גלובל ניהול והשקעות בע"מ ח.פ. 513218453</div>
+            
+            <div style="height: 15px;"></div>
+            <div class="content-section">סך של ____________________₪ (במילים: _________________________________).</div>
+            
+            <div style="height: 15px;"></div>
+            <div class="content-section">סכום שטר זה יהיה צמוד למדד המחירים לצרכן עפ"י תנאי ההצמדה הבאים וישא ריבית כדלקמן:</div>
+            <div class="content-section">"המדד" פירושו: מדד המחירים לצרכן (כולל פרות וירקות) המתפרסם ע"י הלשכה המרכזית לסטטיסטיקה, או כל מדד אחר שיפורסם במקומו.</div>
+            <div class="content-section">שטר זה הינו סחיר.</div>
+            <div class="content-section">"המדד הבסיסי" פירושו: המדד שהיה ידוע במועד החתימה על שטר זה.</div>
+            <div class="content-section">"המדד החדש" פירושו: המדד שיפורסם לאחרונה לפני יום הפירעון בפועל של שטר זה.</div>
+            <div class="content-section">הריבית" פירושה-ריבית בשיעור הריבית החריגה הנוהגת בחריגה מחח"ד בנק מזרחי-טפחות ואשר לא תפחת משיעור של 14.65% שנתית.</div>
+            <div class="content-section">אם במועד הפירעון של שטר זה היה המדד החדש גבוה מהמדד הבסיסי, אשלם את סכום שטר זה כשהוא מוגדל באופן יחסי לשיעור העלייה של המדד החדש לעומת המדד הבסיסי ובצירוף הריבית מיום חתימת שטר זה עד ליום מלא התשלום בפועל. אולם אם המדד החדש יהיה שווה או נמוך מהמדד הבסיסי, אשלם שטר זה כסכומו הנקוב בצירוף הריבית מיום חתימת שטר זה עד ליום מלא התשלום בפועל.</div>
+            <div class="content-section">המחזיק בשטר יהיה רשאי למלא בשטר כל פרט החסר בו והוא יהיה פטור מכל החובות המוטלות על מחזיק בשטר, לרבות מהצגה לתשלום, פרוטסט, הודעת אי כיבוד והודעת חילול השטר.</div>
+            <div class="content-section">*סכום שימולא בשטר במקרה הצורך לא יעלה על סך העמלה לה זכאית ג'י.אי.אמ גלובל ניהול והשקעות בע"מ מכוח הסכם זה בתוספת עלויות גבייה ודמי טיפול לפי העניין כאמור בהסכם וכן הוצאות משפטיות ושכ"ט עו"ד.</div>
+            
+            <div style="height: 20px;"></div>
+            <div class="content-section"><strong>פרטי עושה השטר:</strong></div>
+            
+            <div class="details-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0;">
+              <div style="display: flex; justify-content: space-between;">
+                <span>שם מלא:</span>
+                <span>${clientData.firstName} ${clientData.lastName}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>מספר תעודת זהות:</span>
+                <span>${clientData.idNumber}</span>
+              </div>
+            </div>
+            
+            <div class="content-section">כתובת: ${clientData.address}</div>
+            
+            <div style="height: 30px;"></div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+              <div>חתימת עושה השטר: _________________________</div>
+              ${signatureDataURL ? 
+                `<img src="${signatureDataURL}" style="width: 120px; height: 60px; margin-left: 20px;" />` : 
+                ''
+              }
+            </div>
+          </div>
+        </div>
+        
         <div class="signature-section">
           <div>
             <div>חתימת הלקוח:</div>
