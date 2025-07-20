@@ -264,23 +264,13 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
             <div style="height: 20px;"></div>
             <div class="content-section"><strong>פרטי עושה השטר:</strong></div>
             
-            <div class="details-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0;">
-              <div style="display: flex; justify-content: space-between;">
-                <span>שם מלא:</span>
-                <span>${clientData.firstName} ${clientData.lastName}</span>
-              </div>
-              <div style="display: flex; justify-content: space-between;">
-                <span>מספר תעודת זהות:</span>
-                <span>${clientData.idNumber}</span>
-              </div>
-            </div>
+            <div class="content-section">שם מלא: ${clientData.firstName} ${clientData.lastName}     מספר תעודת זהות: ${clientData.idNumber}</div>
             
             <div class="content-section">כתובת: ${clientData.address}</div>
             
             <div style="height: 30px;"></div>
             
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
-              <div>חתימת עושה השטר: _________________________</div>
+            <div class="content-section">חתימת עושה השטר: _________________________</div>
               ${signatureDataURL ? 
                 `<img src="${signatureDataURL}" style="width: 120px; height: 60px; margin-left: 20px;" />` : 
                 ''
