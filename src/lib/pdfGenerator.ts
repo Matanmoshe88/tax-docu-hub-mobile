@@ -5,12 +5,24 @@ import { generateContractText } from './contractUtils';
 const generatePDFFromHTML = async (contractData: any, signatureDataURL: string): Promise<Blob> => {
   console.log('🎯 Generating PDF using HTML approach with proper RTL support');
   console.log('📊 Contract data received:', contractData);
+  console.log('🔍 All contractData keys:', Object.keys(contractData));
+  console.log('📱 Phone fields check:', {
+    phone: contractData.phone,
+    clientPhone: contractData.client?.phone,
+    MobilePhone: contractData.MobilePhone,
+    PersonMobilePhone: contractData.PersonMobilePhone
+  });
+  console.log('💰 Commission fields check:', {
+    commissionRate: contractData.commissionRate,
+    clientCommissionRate: contractData.client?.commissionRate,
+    commission_rate__c: contractData.commission_rate__c
+  });
   
   const clientData = {
     firstName: contractData.firstName || contractData.client?.name?.split(' ')[0] || contractData.clientData?.firstName || contractData.Name?.split(' ')[0] || '',
     lastName: contractData.lastName || contractData.client?.name?.split(' ').slice(1).join(' ') || contractData.clientData?.lastName || contractData.Name?.split(' ').slice(1).join(' ') || '',
     idNumber: contractData.idNumber || contractData.client?.id || contractData.clientData?.idNumber || contractData.PersonalNumber__c || '',
-    phone: contractData.phone || contractData.client?.phone || contractData.clientData?.phone || contractData.MobilePhone || '',
+    phone: contractData.phone || contractData.client?.phone || contractData.clientData?.phone || contractData.MobilePhone || contractData.PersonMobilePhone || '',
     email: contractData.email || contractData.client?.email || contractData.clientData?.email || contractData.PersonEmail || '',
     address: contractData.address || contractData.client?.address || contractData.clientData?.address || contractData.PersonMailingStreet || '',
     commissionRate: contractData.commissionRate || contractData.client?.commissionRate || contractData.clientData?.commissionRate || contractData.commission_rate__c || '22%',
@@ -109,11 +121,19 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
         .promissory-note {
           page-break-before: always;
           text-align: center;
-          font-size: 14px;
-          font-weight: bold;
+          font-size: 12px;
+          font-weight: normal;
           margin-top: 0;
           padding-top: 50px;
           min-height: 100vh;
+          page-break-inside: avoid;
+        }
+        
+        .promissory-title {
+          font-size: 14px;
+          font-weight: bold;
+          text-align: center;
+          margin-bottom: 30px;
         }
         
         .promissory-content {
@@ -181,7 +201,7 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
               if (!trimmedLine) return '<div style="height: 10px;"></div>';
               if (trimmedLine.includes('הסכם שירות להחזרי מס')) return ''; // Skip title
               if (trimmedLine === 'שטר חוב') {
-                return '</div></div><div class="page-break"></div><div class="promissory-note">שטר חוב<div class="promissory-content">';
+                return '</div></div><div class="page-break"></div><div class="promissory-note"><div class="promissory-title">שטר חוב</div><div class="promissory-content">';
               }
               if (/^\d+\./.test(trimmedLine)) return `<div class="numbered-section">${trimmedLine}</div>`;
               if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
