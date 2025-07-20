@@ -7,9 +7,9 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
   console.log('📊 Contract data received:', contractData);
   
   const clientData = {
-    firstName: contractData.firstName || contractData.client?.firstName || contractData.clientData?.firstName || contractData.Name?.split(' ')[0] || '',
-    lastName: contractData.lastName || contractData.client?.lastName || contractData.clientData?.lastName || contractData.Name?.split(' ').slice(1).join(' ') || '',
-    idNumber: contractData.idNumber || contractData.client?.idNumber || contractData.clientData?.idNumber || contractData.PersonalNumber__c || '',
+    firstName: contractData.firstName || contractData.client?.name?.split(' ')[0] || contractData.clientData?.firstName || contractData.Name?.split(' ')[0] || '',
+    lastName: contractData.lastName || contractData.client?.name?.split(' ').slice(1).join(' ') || contractData.clientData?.lastName || contractData.Name?.split(' ').slice(1).join(' ') || '',
+    idNumber: contractData.idNumber || contractData.client?.id || contractData.clientData?.idNumber || contractData.PersonalNumber__c || '',
     phone: contractData.phone || contractData.client?.phone || contractData.clientData?.phone || contractData.PersonMobilePhone || '',
     email: contractData.email || contractData.client?.email || contractData.clientData?.email || contractData.PersonEmail || '',
     address: contractData.address || contractData.client?.address || contractData.clientData?.address || contractData.PersonMailingStreet || '',
@@ -126,6 +126,14 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
           page-break-after: always;
         }
         
+        .page-break {
+          page-break-before: always;
+          display: block;
+          height: 0;
+          margin: 0;
+          padding: 0;
+        }
+        
         .signature-section {
           margin-top: 40px;
           display: flex;
@@ -171,7 +179,7 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
               if (!trimmedLine) return '<div style="height: 10px;"></div>';
               if (trimmedLine.includes('הסכם שירות להחזרי מס')) return ''; // Skip title
               if (trimmedLine === 'שטר חוב') {
-                return '</div></div><div class="promissory-note">שטר חוב<div class="promissory-content">';
+                return '</div></div><div class="page-break"></div><div class="promissory-note">שטר חוב<div class="promissory-content">';
               }
               if (/^\d+\./.test(trimmedLine)) return `<div class="numbered-section">${trimmedLine}</div>`;
               if (trimmedLine.startsWith('בין:') || trimmedLine.startsWith('לבין:')) {
