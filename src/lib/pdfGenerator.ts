@@ -258,19 +258,44 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
   document.body.appendChild(tempDiv);
   
   try {
-    // Convert HTML to canvas with compression settings
-    const canvas = await html2canvas(tempDiv.querySelector('.contract-container') as HTMLElement, {
+    // Hide promissory note for main contract rendering
+    const promissoryNote = tempDiv.querySelector('.promissory-note') as HTMLElement;
+    const promissoryDisplay = promissoryNote.style.display;
+    promissoryNote.style.display = 'none';
+    
+    // Render main contract
+    const mainCanvas = await html2canvas(tempDiv.querySelector('.contract-container') as HTMLElement, {
       allowTaint: true,
       useCORS: true,
-      scale: 1.2, // Reduced scale for smaller file size
+      scale: 1.2,
       backgroundColor: '#ffffff',
       width: 800,
       windowWidth: 800
     });
     
-    const imgData = canvas.toDataURL('image/jpeg', 0.7); // JPEG with 70% quality for compression
+    // Show only promissory note for separate rendering
+    const mainContract = tempDiv.querySelector('.main-contract') as HTMLElement;
+    const headerElement = tempDiv.querySelector('.header') as HTMLElement;
+    const titleElement = tempDiv.querySelector('.title') as HTMLElement;
+    const signatureElement = tempDiv.querySelector('.signature-section') as HTMLElement;
     
-    // Create PDF from the canvas
+    mainContract.style.display = 'none';
+    headerElement.style.display = 'none';
+    titleElement.style.display = 'none';
+    signatureElement.style.display = 'none';
+    promissoryNote.style.display = promissoryDisplay;
+    
+    // Render promissory note
+    const promissoryCanvas = await html2canvas(tempDiv.querySelector('.contract-container') as HTMLElement, {
+      allowTaint: true,
+      useCORS: true,
+      scale: 1.2,
+      backgroundColor: '#ffffff',
+      width: 800,
+      windowWidth: 800
+    });
+    
+    // Create PDF
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -279,21 +304,30 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
     
     const imgWidth = 210; // A4 width in mm
     const pageHeight = 295; // A4 height in mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
+    
+    // Add main contract pages
+    const mainImgData = mainCanvas.toDataURL('image/jpeg', 0.7);
+    const mainImgHeight = (mainCanvas.height * imgWidth) / mainCanvas.width;
+    let heightLeft = mainImgHeight;
     let position = 0;
     
     // Add first page
-    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+    pdf.addImage(mainImgData, 'JPEG', 0, position, imgWidth, mainImgHeight);
     heightLeft -= pageHeight;
     
-    // Add additional pages if needed
+    // Add additional pages if needed for main contract
     while (heightLeft >= 0) {
-      position = heightLeft - imgHeight;
+      position = heightLeft - mainImgHeight;
       pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      pdf.addImage(mainImgData, 'JPEG', 0, position, imgWidth, mainImgHeight);
       heightLeft -= pageHeight;
     }
+    
+    // Add new page for promissory note
+    pdf.addPage();
+    const promissoryImgData = promissoryCanvas.toDataURL('image/jpeg', 0.7);
+    const promissoryImgHeight = (promissoryCanvas.height * imgWidth) / promissoryCanvas.width;
+    pdf.addImage(promissoryImgData, 'JPEG', 0, 0, imgWidth, promissoryImgHeight);
     
     return pdf.output('blob');
   } finally {
