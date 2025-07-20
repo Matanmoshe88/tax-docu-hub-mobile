@@ -147,10 +147,10 @@ export const useSalesforceData = () => {
       const updatedClientData = {
         firstName: leadData.FirstName || leadData.firstname__c || '',
         lastName: leadData.LastName || leadData.SecName__c || '',
-        idNumber: leadData.PersonalNumber__c || leadData.IdNumber__c || leadData.TZ__c || '',
+        idNumber: leadData.id__c || '',
         phone: leadData.MobilePhone || leadData.PersonMobilePhone || leadData.Phone || '',
         email: leadData.Email || leadData.PersonEmail || '',
-        address: leadData.Address || leadData.Street || leadData.PersonMailingStreet || '',
+        address: leadData.fulladress__c || '',
         commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : '22%'
       };
 
