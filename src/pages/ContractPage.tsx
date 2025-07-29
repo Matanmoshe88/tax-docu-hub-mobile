@@ -13,6 +13,37 @@ export const ContractPage: React.FC = () => {
   const { toast } = useToast();
   const { clientData, isLoading, recordId } = useSalesforceData();
 
+  // Check if contract is already completed and navigate to documents if so
+  useEffect(() => {
+    if (!isLoading && recordId) {
+      const documentsStatus = sessionStorage.getItem('documentsStatus');
+      
+      if (documentsStatus) {
+        try {
+          const documents = JSON.parse(documentsStatus);
+          // Find the contract document (הסכם התקשרות)
+          const contractDocs = documents.filter((doc: any) => doc.DocumentType__c === 'הסכם התקשרות');
+          
+          if (contractDocs.length > 0) {
+            // Get the latest contract document
+            const latestContract = contractDocs.reduce((latest: any, current: any) => 
+              new Date(current.CreatedDate) > new Date(latest.CreatedDate) ? current : latest
+            );
+            
+            // Check if contract is completed or has a URL (indicating it was signed)
+            if (latestContract.Status__c === 'completed' || (latestContract.doc_url__c && latestContract.doc_url__c !== null)) {
+              console.log('✅ Contract already completed, redirecting to documents page');
+              navigate(`/documents/${recordId}`, { replace: true });
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Error checking contract status:', error);
+        }
+      }
+    }
+  }, [isLoading, recordId, navigate]);
+
   // Disable browser back button
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
