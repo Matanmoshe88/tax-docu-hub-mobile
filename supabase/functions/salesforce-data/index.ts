@@ -82,15 +82,8 @@ async function getSalesforceToken(): Promise<SalesforceTokenResponse> {
 async function getLeadData(token: SalesforceTokenResponse, leadId: string): Promise<LeadData> {
   console.log(`📋 Fetching lead data for: ${leadId}`);
   
-  // Query specific fields including CheckYears__c
-  const fields = [
-    'Id', 'Name', 'FirstName', 'LastName', 'Email', 'MobilePhone', 
-    'PersonMobilePhone', 'Phone', 'id__c', 'Commission__c', 'fulladress__c',
-    'CheckYears__c', 'firstname__c', 'SecName__c'
-  ].join(',');
-  
   const leadResponse = await fetch(
-    `${token.instance_url}/services/data/v60.0/sobjects/Lead/${leadId}?fields=${fields}`,
+    `${token.instance_url}/services/data/v60.0/sobjects/Lead/${leadId}`,
     {
       headers: {
         'Authorization': `Bearer ${token.access_token}`,
