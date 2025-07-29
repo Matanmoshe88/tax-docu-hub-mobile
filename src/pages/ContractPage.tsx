@@ -18,11 +18,17 @@ export const ContractPage: React.FC = () => {
     if (!isLoading && recordId) {
       const documentsStatus = sessionStorage.getItem('documentsStatus');
       
+      console.log('🔍 Checking contract status on ContractPage...');
+      console.log('📋 documentsStatus from session:', documentsStatus);
+      
       if (documentsStatus) {
         try {
           const documents = JSON.parse(documentsStatus);
+          console.log('📄 All documents:', documents);
+          
           // Find the contract document (הסכם התקשרות)
           const contractDocs = documents.filter((doc: any) => doc.DocumentType__c === 'הסכם התקשרות');
+          console.log('📝 Contract documents found:', contractDocs);
           
           if (contractDocs.length > 0) {
             // Get the latest contract document
@@ -30,16 +36,25 @@ export const ContractPage: React.FC = () => {
               new Date(current.CreatedDate) > new Date(latest.CreatedDate) ? current : latest
             );
             
+            console.log('📋 Latest contract document:', latestContract);
+            console.log(`📋 Status: ${latestContract.Status__c}, URL: ${latestContract.doc_url__c}`);
+            
             // Check if contract is completed or has a URL (indicating it was signed)
             if (latestContract.Status__c === 'completed' || (latestContract.doc_url__c && latestContract.doc_url__c !== null)) {
               console.log('✅ Contract already completed, redirecting to documents page');
               navigate(`/documents/${recordId}`, { replace: true });
               return;
+            } else {
+              console.log('❌ Contract not completed yet');
             }
+          } else {
+            console.log('❌ No contract documents found');
           }
         } catch (error) {
           console.error('Error checking contract status:', error);
         }
+      } else {
+        console.log('❌ No documentsStatus found in sessionStorage');
       }
     }
   }, [isLoading, recordId, navigate]);
