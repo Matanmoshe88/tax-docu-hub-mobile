@@ -100,8 +100,7 @@ async function uploadDocumentToSalesforce(
     Lead__c: leadId,
     DocumentType__c: documentType,
     doc_url__c: signatureUrl,
-    DocumentManager__c: hubId,
-    Status__c: "completed"
+    DocumentManager__c: hubId
   };
 
   console.log('📄 Document data:', JSON.stringify(documentData, null, 2));
