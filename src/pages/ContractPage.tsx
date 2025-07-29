@@ -31,21 +31,20 @@ export const ContractPage: React.FC = () => {
           console.log('📝 Contract documents found:', contractDocs);
           
           if (contractDocs.length > 0) {
-            // Get the latest contract document
-            const latestContract = contractDocs.reduce((latest: any, current: any) => 
-              new Date(current.CreatedDate) > new Date(latest.CreatedDate) ? current : latest
+            // Check if ANY contract document is completed (not just the latest)
+            const completedContract = contractDocs.find((doc: any) => 
+              doc.Status__c === 'completed' || (doc.doc_url__c && doc.doc_url__c !== null)
             );
             
-            console.log('📋 Latest contract document:', latestContract);
-            console.log(`📋 Status: ${latestContract.Status__c}, URL: ${latestContract.doc_url__c}`);
+            console.log('📋 Checking for any completed contract...');
+            console.log('📋 Completed contract found:', completedContract);
             
-            // Check if contract is completed or has a URL (indicating it was signed)
-            if (latestContract.Status__c === 'completed' || (latestContract.doc_url__c && latestContract.doc_url__c !== null)) {
-              console.log('✅ Contract already completed, redirecting to documents page');
+            if (completedContract) {
+              console.log('✅ Found completed contract, redirecting to documents page');
               navigate(`/documents/${recordId}`, { replace: true });
               return;
             } else {
-              console.log('❌ Contract not completed yet');
+              console.log('❌ No completed contract found');
             }
           } else {
             console.log('❌ No contract documents found');
