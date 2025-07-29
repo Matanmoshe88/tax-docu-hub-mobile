@@ -84,7 +84,7 @@ async function getLeadData(token: SalesforceTokenResponse, leadId: string): Prom
   
   // Query specific fields including CheckYears__c
   const fields = [
-    'Id', 'Name', 'FirstName', 'LastName', 'Email', 'PersonEmail', 'MobilePhone', 
+    'Id', 'Name', 'FirstName', 'LastName', 'Email', 'MobilePhone', 
     'PersonMobilePhone', 'Phone', 'id__c', 'Commission__c', 'fulladress__c',
     'CheckYears__c', 'firstname__c', 'SecName__c'
   ].join(',');

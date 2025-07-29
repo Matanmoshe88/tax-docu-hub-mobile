@@ -150,7 +150,7 @@ export const useSalesforceData = () => {
         lastName: leadData.LastName || leadData.SecName__c || '',
         idNumber: leadData.id__c || '',
         phone: leadData.MobilePhone || leadData.PersonMobilePhone || leadData.Phone || '',
-        email: leadData.Email || leadData.PersonEmail || '',
+        email: leadData.Email || '',
         address: leadData.fulladress__c || '',
         commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : '22%',
         checkYears: leadData.CheckYears__c || ''
