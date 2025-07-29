@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { createAndDownloadPDF } from '@/lib/pdfGenerator';
+import { processFileForUpload } from '@/lib/imageCompression';
 import { supabase } from '@/integrations/supabase/client';
 import { useSalesforceData } from '@/hooks/useSalesforceData';
 
@@ -250,9 +251,11 @@ export const DocumentsPage: React.FC = () => {
     }
   };
 
-  const handleFileInputChange = (docId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInputChange = async (docId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    try {
       // Validate file type
       const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
       if (!allowedTypes.includes(file.type)) {
@@ -264,7 +267,7 @@ export const DocumentsPage: React.FC = () => {
         return;
       }
 
-      // Validate file size (5MB max)
+      // Validate file size (5MB max for original file)
       if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "הקובץ גדול מדי",
@@ -274,7 +277,29 @@ export const DocumentsPage: React.FC = () => {
         return;
       }
 
-      handleFileUpload(docId, file);
+      // Show processing toast for images
+      if (file.type.startsWith('image/')) {
+        toast({
+          title: "מעבד תמונה...",
+          description: "דוחס וממיר את התמונה ל-PDF",
+        });
+      }
+
+      // Process the file (compress and convert images to PDF)
+      const processedFile = await processFileForUpload(file);
+      
+      console.log(`File processing complete: ${file.name} (${file.size} bytes) -> ${processedFile.name} (${processedFile.size} bytes)`);
+
+      await handleFileUpload(docId, processedFile);
+
+    } catch (error) {
+      console.error('💥 File processing error:', error);
+      
+      toast({
+        title: "שגיאה בעיבוד הקובץ",
+        description: error instanceof Error ? error.message : "אנא נסה שוב",
+        variant: "destructive",
+      });
     }
   };
 
