@@ -12,6 +12,7 @@ interface ClientData {
   email: string;
   address: string;
   commissionRate: string;
+  checkYears?: string; // Multi-picklist field from Salesforce
 }
 
 interface SalesforceSession {
@@ -151,7 +152,8 @@ export const useSalesforceData = () => {
         phone: leadData.MobilePhone || leadData.PersonMobilePhone || leadData.Phone || '',
         email: leadData.Email || leadData.PersonEmail || '',
         address: leadData.fulladress__c || '',
-        commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : '22%'
+        commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : '22%',
+        checkYears: leadData.CheckYears__c || ''
       };
 
       console.log('📊 Final updatedClientData being set:', updatedClientData);

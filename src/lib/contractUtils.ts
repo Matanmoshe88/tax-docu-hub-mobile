@@ -6,10 +6,39 @@ export interface ClientData {
   email: string;
   address: string;
   commissionRate: string;
+  checkYears?: string; // Multi-picklist field from Salesforce
 }
+
+const formatYearsRange = (checkYears?: string): string => {
+  if (!checkYears || checkYears.trim() === '') {
+    return '2023-2018'; // Default fallback
+  }
+  
+  // Parse the multi-picklist field (semicolon-separated values)
+  const years = checkYears.split(';')
+    .map(year => year.trim())
+    .filter(year => year !== '')
+    .map(year => parseInt(year))
+    .filter(year => !isNaN(year))
+    .sort((a, b) => b - a); // Sort descending (newest first)
+  
+  if (years.length === 0) {
+    return '2023-2018'; // Default fallback
+  }
+  
+  if (years.length === 1) {
+    return years[0].toString(); // Single year
+  }
+  
+  // Multiple years: show max-min format
+  const maxYear = Math.max(...years);
+  const minYear = Math.min(...years);
+  return `${maxYear}-${minYear}`;
+};
 
 export const generateContractText = (clientData: ClientData): string => {
   const currentDate = new Date().toLocaleDateString('he-IL');
+  const yearsRange = formatYearsRange(clientData.checkYears);
   
   return `הסכם שירות להחזרי מס
 
@@ -17,7 +46,7 @@ export const generateContractText = (clientData: ClientData): string => {
 לבין: ${clientData.firstName} ${clientData.lastName}                                          ת"ז: ${clientData.idNumber}                                    (להלן: "הלקוח")
 שנחתם בתאריך : ${currentDate}
 
-הואיל והלקוח מאשר בזאת כי הינו מבקש לבדוק את זכאותו להחזרי מס באמצעות ג'י.אי.אמ גלובל ניהול והשקעות בע"מ ח.פ. 513218453 להלן: ("קוויקטקס" ו/או "החברה") שכתובתה ת.ד. 11067, פתח-תקווה מיקוד 4934829 מול כלל הרשויות לרבות מס הכנסה וביטוח לאומי לצורך ייצוגו וטיפולו בקבלת ההחזר ממס הכנסה (להלן: "החזר המס") לשנים 2023-2018 (להלן: "תקופת המס") ולבצע עבורו את הפעולות הנדרשות על מנת לקבל החזר מס במקרה של זכאות;
+הואיל והלקוח מאשר בזאת כי הינו מבקש לבדוק את זכאותו להחזרי מס באמצעות ג'י.אי.אמ גלובל ניהול והשקעות בע"מ ח.פ. 513218453 להלן: ("קוויקטקס" ו/או "החברה") שכתובתה ת.ד. 11067, פתח-תקווה מיקוד 4934829 מול כלל הרשויות לרבות מס הכנסה וביטוח לאומי לצורך ייצוגו וטיפולו בקבלת ההחזר ממס הכנסה (להלן: "החזר המס") לשנים ${yearsRange} (להלן: "תקופת המס") ולבצע עבורו את הפעולות הנדרשות על מנת לקבל החזר מס במקרה של זכאות;
 והואיל והחברה - המעסיקה רו"ח ויועצי מס ועוסקת במתן שירותים אל מול רשויות המס לשם ביצוע החזרי מס לשכירים והגשת דוחות כספיים- מסכימה ליטול על עצמה את ייצוגו של הלקוח בהליך החזר המס;
 לפיכך, הוצהר, הוסכם והותנה בין הצדדים כדלקמן:
 1. החברה מספקת שירות לטיפול בהחזרי מס לשכירים מרשויות המס השונות, תוך ליווי הלקוח והגשת בקשות להחזר מיסים בשמו. תנאי סף לבדיקת הזכאות הוא שהלקוח היה שכיר ושילם מס הכנסה בשש השנים האחרונות, והלקוח מצהיר כי עומד בתנאי הסף כאמור לעיל. הטיפול של החברה כולל הזמנת המסמכים הרלוונטיים מרשויות המס בשם הלקוח, בחינתם על ידי אנשי מקצוע (רואי חשבון ו/או יועצי מס) ובמידה ונתוני הלקוח עונים על התנאים להחזר, תוגש בשמו של הלקוח בקשה להחזר מס (להלן: "השירות").
