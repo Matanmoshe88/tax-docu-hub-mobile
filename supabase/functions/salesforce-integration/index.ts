@@ -83,58 +83,6 @@ async function getDocumentHubId(token: SalesforceTokenResponse, leadId: string):
   return hubId;
 }
 
-async function findExistingContractRecord(
-  token: SalesforceTokenResponse,
-  leadId: string,
-  hubId: string,
-  documentType: string
-): Promise<string | null> {
-  console.log(`🔍 Checking for existing ${documentType} record for lead: ${leadId}`);
-  
-  try {
-    const query = `SELECT Id,Status__c FROM DocumentsSingles__c WHERE Lead__c='${leadId}' AND DocumentManager__c='${hubId}' AND DocumentType__c='${documentType}' ORDER BY CreatedDate DESC LIMIT 1`;
-    const encodedQuery = encodeURIComponent(query);
-    
-    const response = await fetch(
-      `${token.instance_url}/services/data/v60.0/query/?q=${encodedQuery}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Failed to query existing records:', response.status, errorText);
-      return null; // Don't throw error, just return null to create new record
-    }
-
-    const data = await response.json();
-    
-    if (data.records && data.records.length > 0) {
-      const existingRecord = data.records[0];
-      console.log(`📋 Found existing ${documentType} record:`, existingRecord);
-      
-      // If record exists but not completed, return its ID for update
-      if (existingRecord.Status__c !== 'completed') {
-        console.log(`🔄 Existing ${documentType} record is not completed, will update it`);
-        return existingRecord.Id;
-      } else {
-        console.log(`✅ Existing ${documentType} record is already completed`);
-        return null; // Return null to create new record
-      }
-    }
-    
-    console.log(`❌ No existing ${documentType} record found`);
-    return null;
-  } catch (error) {
-    console.error('❌ Error in findExistingContractRecord:', error);
-    return null; // Return null to fall back to creating new record
-  }
-}
-
 async function uploadDocumentToSalesforce(
   token: SalesforceTokenResponse,
   leadId: string,
@@ -145,8 +93,73 @@ async function uploadDocumentToSalesforce(
 ): Promise<any> {
   console.log(`🔄 Processing document for lead: ${leadId}, type: ${documentType}`);
   
-  // Check for existing incomplete record
-  const existingRecordId = await findExistingContractRecord(token, leadId, hubId, documentType);
+  // Check for existing incomplete record only for contract documents
+  if (documentType === "הסכם התקשרות") {
+    try {
+      console.log(`🔍 Checking for existing ${documentType} record...`);
+      
+      const query = `SELECT Id,Status__c FROM DocumentsSingles__c WHERE Lead__c='${leadId}' AND DocumentManager__c='${hubId}' AND DocumentType__c='${documentType}' ORDER BY CreatedDate DESC LIMIT 1`;
+      const encodedQuery = encodeURIComponent(query);
+      
+      const checkResponse = await fetch(
+        `${token.instance_url}/services/data/v60.0/query/?q=${encodedQuery}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (checkResponse.ok) {
+        const checkData = await checkResponse.json();
+        
+        if (checkData.records && checkData.records.length > 0) {
+          const existingRecord = checkData.records[0];
+          console.log(`📋 Found existing ${documentType} record:`, existingRecord);
+          
+          // If record exists but not completed, update it
+          if (existingRecord.Status__c !== 'completed') {
+            console.log(`🔄 Updating existing ${documentType} record: ${existingRecord.Id}`);
+            
+            const updateData = {
+              doc_url__c: signatureUrl,
+              Status__c: "completed"
+            };
+            
+            const updateResponse = await fetch(
+              `${token.instance_url}/services/data/v60.0/sobjects/DocumentsSingles__c/${existingRecord.Id}`,
+              {
+                method: 'PATCH',
+                headers: {
+                  'Authorization': `Bearer ${token.access_token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updateData),
+              }
+            );
+            
+            if (updateResponse.ok) {
+              console.log(`✅ Document updated successfully in Salesforce: ${existingRecord.Id}`);
+              return { id: existingRecord.Id, success: true, errors: [] };
+            } else {
+              const errorText = await updateResponse.text();
+              console.error(`❌ Failed to update record:`, errorText);
+              // Fall through to create new record
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error checking for existing record:', error);
+      // Fall through to create new record
+    }
+  }
+  
+  // Create new record (original logic)
+  console.log(`🔄 Creating new ${documentType} record`);
+  
+  const salesforceUrl = `${token.instance_url}/services/data/v60.0/sobjects/DocumentsSingles__c/`;
   
   const documentData = {
     Name: documentName,
@@ -159,57 +172,23 @@ async function uploadDocumentToSalesforce(
 
   console.log('📄 Document data:', JSON.stringify(documentData, null, 2));
 
-  let response;
-  let actionType;
-  
-  if (existingRecordId) {
-    // Update existing record
-    actionType = "UPDATE";
-    console.log(`🔄 Updating existing ${documentType} record: ${existingRecordId}`);
-    
-    const salesforceUrl = `${token.instance_url}/services/data/v60.0/sobjects/DocumentsSingles__c/${existingRecordId}`;
-    
-    response = await fetch(salesforceUrl, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${token.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(documentData),
-    });
-  } else {
-    // Create new record
-    actionType = "CREATE";
-    console.log(`🔄 Creating new ${documentType} record`);
-    
-    const salesforceUrl = `${token.instance_url}/services/data/v60.0/sobjects/DocumentsSingles__c/`;
-    
-    response = await fetch(salesforceUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(documentData),
-    });
-  }
+  const response = await fetch(salesforceUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(documentData),
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`❌ Salesforce document ${actionType.toLowerCase()} failed:`, response.status, errorText);
-    throw new Error(`Failed to ${actionType.toLowerCase()} document: ${response.status} - ${errorText}`);
+    console.error('❌ Salesforce document creation failed:', response.status, errorText);
+    throw new Error(`Failed to create document: ${response.status} - ${errorText}`);
   }
 
-  let result;
-  if (actionType === "UPDATE") {
-    // PATCH requests return 204 No Content on success
-    result = { id: existingRecordId, success: true, errors: [] };
-    console.log(`✅ Document updated successfully in Salesforce: ${existingRecordId}`);
-  } else {
-    result = await response.json();
-    console.log('✅ Document created successfully in Salesforce:', result);
-  }
-  
+  const result = await response.json();
+  console.log('✅ Document created successfully in Salesforce:', result);
   return result;
 }
 
