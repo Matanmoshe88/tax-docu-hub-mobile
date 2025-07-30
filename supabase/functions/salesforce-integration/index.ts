@@ -91,43 +91,48 @@ async function findExistingContractRecord(
 ): Promise<string | null> {
   console.log(`🔍 Checking for existing ${documentType} record for lead: ${leadId}`);
   
-  const query = `SELECT Id,Status__c FROM DocumentsSingles__c WHERE Lead__c='${leadId}' AND DocumentManager__c='${hubId}' AND DocumentType__c='${documentType}' ORDER BY CreatedDate DESC LIMIT 1`;
-  const encodedQuery = encodeURIComponent(query);
-  
-  const response = await fetch(
-    `${token.instance_url}/services/data/v60.0/query/?q=${encodedQuery}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${token.access_token}`,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('❌ Failed to query existing records:', response.status, errorText);
-    return null; // Don't throw error, just return null to create new record
-  }
-
-  const data = await response.json();
-  
-  if (data.records && data.records.length > 0) {
-    const existingRecord = data.records[0];
-    console.log(`📋 Found existing ${documentType} record:`, existingRecord);
+  try {
+    const query = `SELECT Id,Status__c FROM DocumentsSingles__c WHERE Lead__c='${leadId}' AND DocumentManager__c='${hubId}' AND DocumentType__c='${documentType}' ORDER BY CreatedDate DESC LIMIT 1`;
+    const encodedQuery = encodeURIComponent(query);
     
-    // If record exists but not completed, return its ID for update
-    if (existingRecord.Status__c !== 'completed') {
-      console.log(`🔄 Existing ${documentType} record is not completed, will update it`);
-      return existingRecord.Id;
-    } else {
-      console.log(`✅ Existing ${documentType} record is already completed`);
-      return null; // Return null to create new record
+    const response = await fetch(
+      `${token.instance_url}/services/data/v60.0/query/?q=${encodedQuery}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Failed to query existing records:', response.status, errorText);
+      return null; // Don't throw error, just return null to create new record
     }
+
+    const data = await response.json();
+    
+    if (data.records && data.records.length > 0) {
+      const existingRecord = data.records[0];
+      console.log(`📋 Found existing ${documentType} record:`, existingRecord);
+      
+      // If record exists but not completed, return its ID for update
+      if (existingRecord.Status__c !== 'completed') {
+        console.log(`🔄 Existing ${documentType} record is not completed, will update it`);
+        return existingRecord.Id;
+      } else {
+        console.log(`✅ Existing ${documentType} record is already completed`);
+        return null; // Return null to create new record
+      }
+    }
+    
+    console.log(`❌ No existing ${documentType} record found`);
+    return null;
+  } catch (error) {
+    console.error('❌ Error in findExistingContractRecord:', error);
+    return null; // Return null to fall back to creating new record
   }
-  
-  console.log(`❌ No existing ${documentType} record found`);
-  return null;
 }
 
 async function uploadDocumentToSalesforce(
