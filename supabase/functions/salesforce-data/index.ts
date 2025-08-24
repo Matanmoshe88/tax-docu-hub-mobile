@@ -31,12 +31,22 @@ interface DocumentsSingle {
   CreatedDate: string;
 }
 
+interface PicklistValue {
+  label: string;
+  value: string;
+}
+
+interface CheckYearsMetadata {
+  values: PicklistValue[];
+}
+
 interface SalesforceDataResponse {
   success: boolean;
   data?: {
     leadData: LeadData;
     documentHubId: string;
     documents: DocumentsSingle[];
+    checkYears: string[];
     accessToken: string;
     instanceUrl: string;
   };
@@ -134,6 +144,30 @@ async function getDocumentHubId(token: SalesforceTokenResponse, leadId: string):
   return hubId;
 }
 
+async function getCheckYearsMetadata(token: SalesforceTokenResponse): Promise<string[]> {
+  console.log('📅 Fetching CheckYears metadata from Salesforce...');
+  
+  const metadataResponse = await fetch(
+    `${token.instance_url}/services/data/v58.0/ui-api/object-info/Lead/picklist-values/012J9000000kE8yIAE/CheckYears__c`,
+    {
+      headers: {
+        'Authorization': `Bearer ${token.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  if (!metadataResponse.ok) {
+    const errorText = await metadataResponse.text();
+    throw new Error(`Failed to fetch CheckYears metadata: ${metadataResponse.status} - ${errorText}`);
+  }
+
+  const metadataData: CheckYearsMetadata = await metadataResponse.json();
+  const years = metadataData.values.map(value => value.value);
+  console.log(`✅ Found ${years.length} years in CheckYears picklist:`, years);
+  return years;
+}
+
 async function getDocumentStatus(token: SalesforceTokenResponse, hubId: string): Promise<DocumentsSingle[]> {
   console.log(`📄 Fetching document status for hub: ${hubId}`);
   
@@ -218,12 +252,16 @@ serve(async (req) => {
     // Get document status
     const documents = await getDocumentStatus(token, documentHubId);
 
+    // Get CheckYears metadata
+    const checkYears = await getCheckYearsMetadata(token);
+
     const response: SalesforceDataResponse = {
       success: true,
       data: {
         leadData,
         documentHubId,
         documents,
+        checkYears,
         accessToken: token.access_token,
         instanceUrl: token.instance_url,
       }

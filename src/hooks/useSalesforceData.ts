@@ -124,7 +124,7 @@ export const useSalesforceData = () => {
         return;
       }
 
-      const { leadData, documentHubId, documents, accessToken, instanceUrl } = data.data;
+      const { leadData, documentHubId, documents, checkYears, accessToken, instanceUrl } = data.data;
       console.log('✅ Salesforce data loaded successfully');
       console.log('📊 API Response data:', { leadData, documentHubId, documents, accessToken: '***', instanceUrl });
       console.log('🔍 LeadData fields:', Object.keys(leadData || {}));
@@ -153,7 +153,7 @@ export const useSalesforceData = () => {
         email: leadData.Email || '',
         address: leadData.fulladress__c || '',
         commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : '22%',
-        checkYears: leadData.CheckYears__c || ''
+        checkYears: checkYears ? checkYears.join(';') : ''
       };
 
       console.log('📊 Final updatedClientData being set:', updatedClientData);
