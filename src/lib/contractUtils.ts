@@ -46,8 +46,13 @@ const formatYearsRange = (checkYears?: string): string => {
 };
 
 export const generateContractText = (clientData: ClientData): string => {
+  console.log('🔍 generateContractText called with clientData:', clientData);
+  console.log('📅 checkYears value:', clientData.checkYears);
+  
   const currentDate = new Date().toLocaleDateString('he-IL');
   const yearsRange = formatYearsRange(clientData.checkYears);
+  
+  console.log('📅 Final yearsRange result:', yearsRange);
   
   return `הסכם שירות להחזרי מס
 
