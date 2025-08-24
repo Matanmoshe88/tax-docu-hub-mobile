@@ -173,6 +173,7 @@ export const SignaturePage: React.FC = () => {
     
     // Transform data to match new API structure
     const contractData = {
+      ...clientData, // Spread all clientData fields including checkYears
       contractNumber: recordId || '12345',
       company: {
         name: 'קוויק טקס (ג\'י.אי.אמ גלובל)',
@@ -185,7 +186,8 @@ export const SignaturePage: React.FC = () => {
         phone: clientData.phone,
         email: clientData.email,
         address: clientData.address,
-        commissionRate: clientData.commissionRate
+        commissionRate: clientData.commissionRate,
+        checkYears: clientData.checkYears // Include checkYears for PDF generation
       },
       sections: [
         { title: 'סעיף 1 - השירות', content: 'החברה מתחייבת לבצע החזרי מס עבור הלקוח' },
