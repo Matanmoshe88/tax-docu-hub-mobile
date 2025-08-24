@@ -14,7 +14,7 @@ const formatYearsRange = (checkYears?: string): string => {
   
   if (!checkYears || checkYears.trim() === '') {
     console.log('❌ checkYears is empty, returning default fallback');
-    return '2023-2018'; // Default fallback
+    return '2024-2019'; // Updated default to match current years
   }
   
   // Parse the multi-picklist field (semicolon-separated values)
@@ -29,7 +29,7 @@ const formatYearsRange = (checkYears?: string): string => {
   
   if (years.length === 0) {
     console.log('❌ No valid years found, returning default fallback');
-    return '2023-2018'; // Default fallback
+    return '2024-2019'; // Updated default to match current years
   }
   
   if (years.length === 1) {
@@ -37,11 +37,11 @@ const formatYearsRange = (checkYears?: string): string => {
     return years[0].toString();
   }
   
-  // Multiple years: show max-min format
+  // Multiple years: show max-min format (newest-oldest)
   const maxYear = Math.max(...years);
   const minYear = Math.min(...years);
   const result = `${maxYear}-${minYear}`;
-  console.log('✅ Multiple years range:', result);
+  console.log('✅ Multiple years range result:', result);
   return result;
 };
 
