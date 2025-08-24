@@ -23,6 +23,10 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
     clientCommissionRateField: contractData.client?.commission_rate__c,
     commission_rate__c: contractData.commission_rate__c
   });
+  console.log('📅 Years fields check:', {
+    checkYears: contractData.checkYears,
+    clientCheckYears: contractData.client?.checkYears
+  });
   
   const clientData = {
     firstName: contractData.firstName || contractData.client?.name?.split(' ')[0] || contractData.client?.firstName || contractData.Name?.split(' ')[0] || '',
@@ -32,6 +36,7 @@ const generatePDFFromHTML = async (contractData: any, signatureDataURL: string):
     email: contractData.email || contractData.client?.email || contractData.PersonEmail || '',
     address: contractData.address || contractData.client?.address || contractData.PersonMailingStreet || '',
     commissionRate: contractData.commissionRate || contractData.client?.commissionRate || contractData.client?.commission_rate__c || contractData.commission_rate__c || '22%',
+    checkYears: contractData.checkYears || contractData.client?.checkYears || '',
     contractNumber: contractData.contractNumber || contractData.Id || ''
   };
 
