@@ -153,7 +153,7 @@ export const useSalesforceData = () => {
         email: leadData.Email || '',
         address: leadData.fulladress__c || '',
         commissionRate: leadData.Commission__c ? `${leadData.Commission__c}%` : '22%',
-        checkYears: checkYears ? checkYears.join(';') : ''
+        checkYears: leadData.CheckYears__c || ''
       };
 
       console.log('📊 Final updatedClientData being set:', updatedClientData);
