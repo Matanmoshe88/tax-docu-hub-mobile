@@ -286,53 +286,49 @@ export const SignaturePage: React.FC = () => {
         .from('signatures')
         .getPublicUrl(contractFileName);
 
-      // Find signature and agreement documents - first try registerDocuments, then fallback to bankCatalog direct search
-      console.log('📋 All Register documents:', registerDocuments);
-      console.log('📋 Register documents length:', registerDocuments?.length);
-      console.log('🏦 Full bank catalog:', bankCatalog);
-      
-      let signatureDoc = registerDocuments?.find(doc => {
-        console.log('🔍 Checking register doc for signature:', doc.name, 'documentType:', doc.documentType);
-        return doc.documentType === 'Signature' || doc.name.includes('חתימה') || doc.name.toLowerCase().includes('signature');
-      });
-      
-      let contractDoc = registerDocuments?.find(doc => {
-        console.log('🔍 Checking register doc for contract:', doc.name, 'documentType:', doc.documentType);
-        return doc.documentType === 'Agreement' || doc.name.includes('הסכם') || doc.name.toLowerCase().includes('contract') || doc.name.includes('התקשרות');
-      });
+      // Prefer direct lookup in bankCatalog by Document_Type__c, then fallback to registerDocuments
+      const safeBankCatalog: any[] = Array.isArray(bankCatalog)
+        ? bankCatalog
+        : JSON.parse(sessionStorage.getItem('bankCatalog') || '[]');
 
-      // Fallback: search directly in bankCatalog for Document_Type__c
-      if (!signatureDoc && bankCatalog) {
-        const signatureBankItem = bankCatalog.find((item: any) => item.Document_Type__c === 'Signature');
-        if (signatureBankItem) {
-          console.log('🔄 Found signature in bankCatalog fallback:', signatureBankItem);
-          signatureDoc = {
+      console.log('🏦 Full bank catalog (safe):', safeBankCatalog);
+      console.log('📋 Register documents length:', registerDocuments?.length);
+
+      const signatureBankItem = safeBankCatalog.find((item: any) => item.Document_Type__c === 'Signature');
+      const agreementBankItem = safeBankCatalog.find((item: any) => item.Document_Type__c === 'Agreement');
+
+      let signatureDoc = signatureBankItem
+        ? {
             bankId: signatureBankItem.Id,
             name: signatureBankItem.Name,
             documentType: signatureBankItem.Document_Type__c,
             category: signatureBankItem.Catagory__c,
             displayOrder: signatureBankItem.Display_Order__c || 0,
             isRequired: signatureBankItem.Is_Required__c || false,
-            status: 'not_uploaded'
-          };
-        }
-      }
+            status: 'not_uploaded' as const,
+          }
+        : registerDocuments?.find((doc) =>
+            doc.documentType === 'Signature' ||
+            doc.name.includes('חתימה') ||
+            doc.name.toLowerCase().includes('signature')
+          );
 
-      if (!contractDoc && bankCatalog) {
-        const agreementBankItem = bankCatalog.find((item: any) => item.Document_Type__c === 'Agreement');
-        if (agreementBankItem) {
-          console.log('🔄 Found agreement in bankCatalog fallback:', agreementBankItem);
-          contractDoc = {
+      let contractDoc = agreementBankItem
+        ? {
             bankId: agreementBankItem.Id,
             name: agreementBankItem.Name,
             documentType: agreementBankItem.Document_Type__c,
             category: agreementBankItem.Catagory__c,
             displayOrder: agreementBankItem.Display_Order__c || 0,
             isRequired: agreementBankItem.Is_Required__c || false,
-            status: 'not_uploaded'
-          };
-        }
-      }
+            status: 'not_uploaded' as const,
+          }
+        : registerDocuments?.find((doc) =>
+            doc.documentType === 'Agreement' ||
+            doc.name.includes('הסכם') ||
+            doc.name.toLowerCase().includes('contract') ||
+            doc.name.includes('התקשרות')
+          );
 
       console.log('✍️ Final signature doc:', signatureDoc);
       console.log('📄 Final contract doc:', contractDoc);
