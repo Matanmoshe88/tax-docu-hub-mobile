@@ -44,6 +44,7 @@ interface DocumentListItem {
   isRequired: boolean;
   displayOrder: number;
   category: string;
+  documentType: string;
   uploadedUrl?: string;
   uploadedDate?: string;
   status: 'not_uploaded' | 'uploaded';
@@ -217,6 +218,7 @@ export const useSalesforceData = () => {
             isRequired: bankItem.Is_Required__c,
             displayOrder: bankItem.Display_Order__c,
             category: bankItem.Catagory__c,
+            documentType: bankItem.Document_Type__c || '',
             uploadedUrl: existingDoc?.URL__c,
             uploadedDate: existingDoc?.Collection_Date__c,
             status: existingDoc ? 'uploaded' : 'not_uploaded'
@@ -300,6 +302,7 @@ export const useSalesforceData = () => {
               isRequired: bankItem.Is_Required__c,
               displayOrder: bankItem.Display_Order__c,
               category: bankItem.Catagory__c,
+              documentType: bankItem.Document_Type__c || '',
               uploadedUrl: existingDoc?.URL__c,
               uploadedDate: existingDoc?.Collection_Date__c,
               status: existingDoc ? 'uploaded' : 'not_uploaded'

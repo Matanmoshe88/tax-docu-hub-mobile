@@ -286,17 +286,23 @@ export const SignaturePage: React.FC = () => {
         .from('signatures')
         .getPublicUrl(contractFileName);
 
-      // Find register documents for signature and contract
+      // Find register documents for signature and contract using documentType first, then name fallback
       console.log('📋 All Register documents:', registerDocuments);
       console.log('📋 Register documents length:', registerDocuments?.length);
       
       const signatureDoc = registerDocuments?.find(doc => {
-        console.log('🔍 Checking doc for signature:', doc.name, doc);
+        console.log('🔍 Checking doc for signature:', doc.name, 'documentType:', doc.documentType);
+        // Prioritize matching by documentType
+        if (doc.documentType === 'Signature') return true;
+        // Fallback to name matching
         return doc.name.includes('חתימה') || doc.name.toLowerCase().includes('signature');
       });
       
       const contractDoc = registerDocuments?.find(doc => {
-        console.log('🔍 Checking doc for contract:', doc.name, doc);
+        console.log('🔍 Checking doc for contract:', doc.name, 'documentType:', doc.documentType);
+        // Prioritize matching by documentType
+        if (doc.documentType === 'Agreement') return true;
+        // Fallback to name matching
         return doc.name.includes('הסכם') || doc.name.toLowerCase().includes('contract') || doc.name.includes('התקשרות');
       });
 
@@ -307,26 +313,48 @@ export const SignaturePage: React.FC = () => {
       if (signatureDoc) {
         toast({
           title: "שולח חתימה ל-Salesforce...",
-          description: "מעביר את החתימה למערכת הניהול",
+          description: `מעביר את החתימה למערכת הניהול (Bank ID: ${signatureDoc.bankId})`,
         });
         
+        console.log('🔄 Upserting signature with bankId:', signatureDoc.bankId);
         const salesforceResult = await callSalesforceIntegration(signatureUrl, signatureDoc.bankId, "חתימה");
         console.log('✅ Signature uploaded to Salesforce:', salesforceResult);
+        
+        toast({
+          title: "חתימה נשלחה בהצלחה!",
+          description: "החתימה עודכנה במערכת הניהול",
+        });
       } else {
         console.log('⚠️ No signature document type found in register documents');
+        toast({
+          title: "שגיאה",
+          description: "לא נמצא סוג מסמך חתימה ברשימת המסמכים",
+          variant: "destructive",
+        });
       }
 
-      // Send contract to Salesforce (only if we have a matching document type)
+      // Send contract to Salesforce (only if we have a matching document type) - Sequential after signature
       if (contractDoc) {
         toast({
           title: "שולח הסכם ל-Salesforce...",
-          description: "מעביר את ההסכם למערכת הניהול",
+          description: `מעביר את ההסכם למערכת הניהול (Bank ID: ${contractDoc.bankId})`,
         });
         
+        console.log('🔄 Upserting contract with bankId:', contractDoc.bankId);
         const contractResult = await callSalesforceIntegration(contractUrl, contractDoc.bankId, "הסכם התקשרות");
         console.log('✅ Contract uploaded to Salesforce:', contractResult);
+        
+        toast({
+          title: "הסכם נשלח בהצלחה!",
+          description: "ההסכם עודכן במערכת הניהול",
+        });
       } else {
         console.log('⚠️ No contract document type found in register documents');
+        toast({
+          title: "שגיאה",
+          description: "לא נמצא סוג מסמך הסכם ברשימת המסמכים",
+          variant: "destructive",
+        });
       }
       
       setIsSigned(true);
