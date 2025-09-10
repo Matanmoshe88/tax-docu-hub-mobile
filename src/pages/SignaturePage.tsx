@@ -282,7 +282,7 @@ export const SignaturePage: React.FC = () => {
       return;
     }
 
-    // Check signature size with multiple validation criteria
+    // AGGRESSIVE signature validation with multiple sophisticated checks
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -293,8 +293,9 @@ export const SignaturePage: React.FC = () => {
     const data = imageData.data;
     let pixelCount = 0;
     let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
+    const drawnPixels: {x: number, y: number}[] = [];
     
-    // Count pixels and find bounding box
+    // Count pixels, find bounding box, and collect drawn pixels
     for (let y = 0; y < canvas.height; y++) {
       for (let x = 0; x < canvas.width; x++) {
         const index = (y * canvas.width + x) * 4;
@@ -304,6 +305,7 @@ export const SignaturePage: React.FC = () => {
           minY = Math.min(minY, y);
           maxX = Math.max(maxX, x);
           maxY = Math.max(maxY, y);
+          drawnPixels.push({x, y});
         }
       }
     }
@@ -312,24 +314,56 @@ export const SignaturePage: React.FC = () => {
     const coveragePercentage = (pixelCount / totalPixels) * 100;
     const boundingWidth = maxX - minX + 1;
     const boundingHeight = maxY - minY + 1;
+    const boundingArea = boundingWidth * boundingHeight;
+    const densityInBounds = pixelCount / boundingArea;
     
-    console.log('Signature validation:', {
+    // Calculate signature complexity - check for variation in positions
+    let complexityScore = 0;
+    if (drawnPixels.length > 1) {
+      const xPositions = drawnPixels.map(p => p.x);
+      const yPositions = drawnPixels.map(p => p.y);
+      const xVariance = Math.max(...xPositions) - Math.min(...xPositions);
+      const yVariance = Math.max(...yPositions) - Math.min(...yPositions);
+      complexityScore = xVariance + yVariance;
+    }
+    
+    // Check for stroke continuity - measure gaps between drawn pixels
+    let strokeContinuity = 0;
+    if (drawnPixels.length > 10) {
+      const sortedPixels = drawnPixels.sort((a, b) => a.x - b.x || a.y - b.y);
+      let continuousStrokes = 0;
+      for (let i = 1; i < Math.min(sortedPixels.length, 100); i++) {
+        const prev = sortedPixels[i-1];
+        const curr = sortedPixels[i];
+        const distance = Math.sqrt(Math.pow(curr.x - prev.x, 2) + Math.pow(curr.y - prev.y, 2));
+        if (distance < 5) continuousStrokes++;
+      }
+      strokeContinuity = continuousStrokes / Math.min(sortedPixels.length, 100);
+    }
+    
+    console.log('AGGRESSIVE Signature validation:', {
       pixelCount,
       coveragePercentage: coveragePercentage.toFixed(3),
       boundingBox: { width: boundingWidth, height: boundingHeight },
+      densityInBounds: densityInBounds.toFixed(3),
+      complexityScore,
+      strokeContinuity: strokeContinuity.toFixed(3),
       totalPixels
     });
     
-    // Multiple validation criteria
-    const minPixelCount = 500; // Increased from 100
-    const minCoveragePercent = 0.25; // At least 0.25% of canvas
-    const minBoundingWidth = 120; // Minimum signature width
-    const minBoundingHeight = 30; // Minimum signature height
+    // AGGRESSIVE validation criteria
+    const minPixelCount = 2000; // Much higher - roughly a full signature
+    const minCoveragePercent = 0.8; // Must cover significant canvas area
+    const minBoundingWidth = 200; // Much wider signature required
+    const minBoundingHeight = 60; // Much taller signature required
+    const minDensity = 0.15; // Signature must be dense within bounds
+    const minComplexity = 250; // Must have variation in x and y
+    const minStrokeContinuity = 0.3; // Must have connected strokes
     
     if (pixelCount < minPixelCount) {
       toast({
-        title: "החתימה קטנה מדי",
-        description: "אנא חתום בצורה מלאה ובולטת יותר",
+        title: "חתימה לא מספקת",
+        description: `נדרשים לפחות ${minPixelCount} פיקסלים. נמצאו: ${pixelCount}`,
         variant: "destructive",
       });
       return;
@@ -338,7 +372,7 @@ export const SignaturePage: React.FC = () => {
     if (coveragePercentage < minCoveragePercent) {
       toast({
         title: "החתימה קטנה מדי",
-        description: "החתימה צריכה לכסות שטח גדול יותר",
+        description: `החתימה חייבת לכסות לפחות ${minCoveragePercent}% מהתיבה`,
         variant: "destructive",
       });
       return;
@@ -347,7 +381,34 @@ export const SignaturePage: React.FC = () => {
     if (boundingWidth < minBoundingWidth || boundingHeight < minBoundingHeight) {
       toast({
         title: "החתימה קטנה מדי",
-        description: `החתימה צריכה להיות לפחות ${minBoundingWidth}×${minBoundingHeight} פיקסלים`,
+        description: `נדרש גודל מינימלי: ${minBoundingWidth}×${minBoundingHeight} פיקסלים`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (densityInBounds < minDensity) {
+      toast({
+        title: "החתימה דלילה מדי",
+        description: "אנא חתום בצורה מלאה ורציפה יותר",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (complexityScore < minComplexity) {
+      toast({
+        title: "החתימה פשוטה מדי",
+        description: "החתימה צריכה להיות מורכבת יותר ולא קו ישר",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (strokeContinuity < minStrokeContinuity) {
+      toast({
+        title: "החתימה לא רציפה",
+        description: "אנא חתום בתנועות רציפות ולא נקודות מפוזרות",
         variant: "destructive",
       });
       return;
