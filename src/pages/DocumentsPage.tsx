@@ -40,53 +40,9 @@ const getYearsFolder = () => {
   return `${startYear}-${currentYear}`;
 };
 
-// Helper function to sanitize filetype from document name
-const sanitizeFiletype = (documentName: string) => {
-  // Hebrew to English translations for common document types
-  const hebrewToEnglish: Record<string, string> = {
-    'חתימה': 'signature',
-    'הסכם': 'contract',
-    'התקשרות': 'agreement',
-    'צילום': 'photo',
-    'תז': 'id',
-    'תעודת': 'certificate',
-    'זהות': 'identity',
-    'ספח': 'appendix',
-    'רישיון': 'license',
-    'נהיגה': 'driving',
-    'בנק': 'bank',
-    'חשבון': 'account',
-    'אישור': 'confirmation',
-    'יצוג': 'representation',
-    'מס': 'tax',
-    'הכנסה': 'income',
-    'ביטוח': 'insurance',
-    'לאומי': 'national',
-    'פנסיה': 'pension'
-  };
-
-  let result = documentName.toLowerCase();
-  
-  // Replace Hebrew words with English equivalents
-  Object.entries(hebrewToEnglish).forEach(([hebrew, english]) => {
-    result = result.replace(new RegExp(hebrew, 'g'), english);
-  });
-  
-  // Remove any remaining non-English characters and special characters
-  result = result
-    .replace(/[^a-z0-9\s]/g, '') // Keep only English letters, numbers, and spaces
-    .replace(/\s+/g, '_') // Replace spaces with underscores
-    .replace(/_+/g, '_') // Replace multiple underscores with single
-    .replace(/^_|_$/g, '') // Remove leading/trailing underscores
-    .trim();
-  
-  // Fallback to 'document' if result is empty
-  return result || 'document';
-};
-
 export const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { clientData, isLoading, recordId, isDataFresh, identificationDocuments, refetchData } = useSalesforceData();
+  const { clientData, isLoading, recordId, isDataFresh, identificationDocuments, refetchData, bankCatalog } = useSalesforceData();
   const { toast } = useToast();
   
   // Optimistic UI state - track uploads before Salesforce confirms
@@ -108,19 +64,19 @@ export const DocumentsPage: React.FC = () => {
   const uploadDocumentToStorage = async (file: File, bankId: string): Promise<string> => {
     console.log('🔄 Uploading document to Supabase storage...');
     
-    // Find document name for filetype
-    const document = documents.find(doc => doc.bankId === bankId);
-    const filetype = document ? sanitizeFiletype(document.name) : 'document';
+    // Find document from bank catalog for Document_Type__c
+    const bankDocument = bankCatalog?.find(item => item.Id === bankId);
+    const filetype = bankDocument?.Document_Type__c || 'document';
     
-    // Create new file structure: {clientId}/{yearsFolder}/{filetype}_{recordId}_{timestamp}.{ext}
-    const clientId = recordId; // Using recordId as clientId (Salesforce Lead ID)
+    // Create new file structure: {clientRealId}/{yearsFolder}/{filetype}_{recordId}_{timestamp}.{ext}
+    const clientRealId = clientData?.idNumber || recordId; // Use client's real ID number
     const yearsFolder = getYearsFolder();
     const timestamp = Date.now();
     const fileExtension = file.name.split('.').pop();
     const fileName = `${filetype}_${recordId}_${timestamp}.${fileExtension}`;
-    const filePath = `${clientId}/${yearsFolder}/${fileName}`;
+    const filePath = `${clientRealId}/${yearsFolder}/${fileName}`;
     
-    console.log('📁 New file structure:', { clientId, yearsFolder, fileName, filePath });
+    console.log('📁 New file structure:', { clientRealId, yearsFolder, fileName, filePath });
     
     const { data, error } = await supabase.storage
       .from('signatures')

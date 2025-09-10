@@ -187,14 +187,14 @@ export const SignaturePage: React.FC = () => {
   const uploadSignatureToStorage = async (signatureBlob: Blob): Promise<string> => {
     console.log('🔄 Uploading signature to Supabase storage...');
     
-    // Create new file structure: {clientId}/{yearsFolder}/{filetype}_{recordId}_{timestamp}.png
-    const clientId = recordId; // Using recordId as clientId (Salesforce Lead ID)
+    // Create new file structure: {clientRealId}/{yearsFolder}/{filetype}_{recordId}_{timestamp}.png
+    const clientRealId = clientData?.idNumber || recordId; // Use client's real ID number
     const yearsFolder = getYearsFolder();
     const timestamp = Date.now();
-    const fileName = `signature_${recordId}_${timestamp}.png`;
-    const filePath = `${clientId}/${yearsFolder}/${fileName}`;
+    const fileName = `Signature_${recordId}_${timestamp}.png`;
+    const filePath = `${clientRealId}/${yearsFolder}/${fileName}`;
     
-    console.log('📁 New signature file structure:', { clientId, yearsFolder, fileName, filePath });
+    console.log('📁 New signature file structure:', { clientRealId, yearsFolder, fileName, filePath });
     
     const { data, error } = await supabase.storage
       .from('signatures')
@@ -340,13 +340,13 @@ export const SignaturePage: React.FC = () => {
       const contractBlob = await generateSignedContract(signatureDataURL);
       
       // Upload contract to storage with new structure
-      const clientId = recordId; // Using recordId as clientId (Salesforce Lead ID)
+      const clientRealId = clientData?.idNumber || recordId; // Use client's real ID number
       const yearsFolder = getYearsFolder();
       const timestamp = Date.now();
-      const contractFileName = `contract_${recordId}_${timestamp}.pdf`;
-      const contractFilePath = `${clientId}/${yearsFolder}/${contractFileName}`;
+      const contractFileName = `Agreement_${recordId}_${timestamp}.pdf`;
+      const contractFilePath = `${clientRealId}/${yearsFolder}/${contractFileName}`;
       
-      console.log('📁 New contract file structure:', { clientId, yearsFolder, contractFileName, contractFilePath });
+      console.log('📁 New contract file structure:', { clientRealId, yearsFolder, contractFileName, contractFilePath });
       
       const { data: contractData, error: contractError } = await supabase.storage
         .from('signatures')
