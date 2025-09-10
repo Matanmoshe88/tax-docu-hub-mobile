@@ -307,7 +307,7 @@ export const useSalesforceData = () => {
 
             if (bankItem.Catagory__c === 'Identification documents') {
               identificationDocs.push(documentItem);
-            } else if (bankItem.Catagory__c === 'Register Documents') {
+            } else if (bankItem.Catagory__c === 'Register Documnets' || bankItem.Catagory__c === 'Register Documents') {
               registerDocs.push(documentItem);
             }
           });

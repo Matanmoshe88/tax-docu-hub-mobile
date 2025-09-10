@@ -287,14 +287,19 @@ export const SignaturePage: React.FC = () => {
         .getPublicUrl(contractFileName);
 
       // Find register documents for signature and contract
-      const signatureDoc = registerDocuments?.find(doc => 
-        doc.name.toLowerCase().includes('חתימה') || doc.name.toLowerCase().includes('signature')
-      );
-      const contractDoc = registerDocuments?.find(doc => 
-        doc.name.toLowerCase().includes('הסכם') || doc.name.toLowerCase().includes('contract')
-      );
+      console.log('📋 All Register documents:', registerDocuments);
+      console.log('📋 Register documents length:', registerDocuments?.length);
+      
+      const signatureDoc = registerDocuments?.find(doc => {
+        console.log('🔍 Checking doc for signature:', doc.name, doc);
+        return doc.name.includes('חתימה') || doc.name.toLowerCase().includes('signature');
+      });
+      
+      const contractDoc = registerDocuments?.find(doc => {
+        console.log('🔍 Checking doc for contract:', doc.name, doc);
+        return doc.name.includes('הסכם') || doc.name.toLowerCase().includes('contract') || doc.name.includes('התקשרות');
+      });
 
-      console.log('📋 Register documents:', registerDocuments);
       console.log('✍️ Found signature doc:', signatureDoc);
       console.log('📄 Found contract doc:', contractDoc);
 
