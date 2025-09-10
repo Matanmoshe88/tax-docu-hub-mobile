@@ -59,7 +59,7 @@ interface SalesforceDataResponse {
   success: boolean;
   data?: {
     leadData: LeadData;
-    portalId: string;
+    portalId: string | null;
     bankCatalog: DocumnetBankRecord[];
     docs: DocsRecord[];
     checkYears: string[];
@@ -128,7 +128,7 @@ async function getLeadData(token: SalesforceTokenResponse, leadId: string): Prom
   return leadData;
 }
 
-async function getDocumentPortalId(token: SalesforceTokenResponse, leadId: string): Promise<string> {
+async function getDocumentPortalId(token: SalesforceTokenResponse, leadId: string): Promise<string | null> {
   console.log(`🔍 Finding DocumentPortal for lead: ${leadId}`);
   
   const query = `SELECT Id FROM DocumentPortal__c WHERE Lead__c='${leadId}' ORDER BY CreatedDate DESC LIMIT 1`;
@@ -152,7 +152,8 @@ async function getDocumentPortalId(token: SalesforceTokenResponse, leadId: strin
   const portalData = await portalResponse.json();
   
   if (!portalData.records || portalData.records.length === 0) {
-    throw new Error('No DocumentPortal found for this lead');
+    console.log('⚠️ No DocumentPortal found for this lead');
+    return null;
   }
 
   const portalId = portalData.records[0].Id;
@@ -210,8 +211,13 @@ async function getDocumnetBankCatalog(token: SalesforceTokenResponse): Promise<D
   return bankData.records || [];
 }
 
-async function getExistingDocs(token: SalesforceTokenResponse, portalId: string): Promise<DocsRecord[]> {
+async function getExistingDocs(token: SalesforceTokenResponse, portalId: string | null): Promise<DocsRecord[]> {
   console.log(`📄 Fetching existing Docs for portal: ${portalId}`);
+  
+  if (!portalId) {
+    console.log('ℹ️ No portalId provided, returning empty docs list');
+    return [];
+  }
   
   const query = `SELECT Id,DocumnetsType__c,DocumnetsType__r.Name,DocumnetsType__r.Catagory__c,DocumnetsType__r.Display_Order__c,URL__c,PrimaryOrSpouse__c,Collection_Date__c,Document_Key__c FROM Docs__c WHERE DocumnetPortal__c='${portalId}' AND PrimaryOrSpouse__c='Primary' ORDER BY DocumnetsType__r.Display_Order__c ASC,LastModifiedDate DESC`;
   const encodedQuery = encodeURIComponent(query);

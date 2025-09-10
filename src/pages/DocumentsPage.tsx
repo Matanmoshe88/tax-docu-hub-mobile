@@ -81,8 +81,8 @@ export const DocumentsPage: React.FC = () => {
     const { data, error } = await supabase.functions.invoke('salesforce-integration', {
       body: {
         leadId: recordId,
-        documentUrl: documentUrl,
-        bankId: bankId
+        signatureUrl: documentUrl,
+        documnetBankId: bankId
       }
     });
 
