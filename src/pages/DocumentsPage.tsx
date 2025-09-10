@@ -42,10 +42,46 @@ const getYearsFolder = () => {
 
 // Helper function to sanitize filetype from document name
 const sanitizeFiletype = (documentName: string) => {
-  return documentName
-    .replace(/[^א-ת\w\s]/g, '') // Remove special characters, keep Hebrew, English, numbers, spaces
+  // Hebrew to English translations for common document types
+  const hebrewToEnglish: Record<string, string> = {
+    'חתימה': 'signature',
+    'הסכם': 'contract',
+    'התקשרות': 'agreement',
+    'צילום': 'photo',
+    'תז': 'id',
+    'תעודת': 'certificate',
+    'זהות': 'identity',
+    'ספח': 'appendix',
+    'רישיון': 'license',
+    'נהיגה': 'driving',
+    'בנק': 'bank',
+    'חשבון': 'account',
+    'אישור': 'confirmation',
+    'יצוג': 'representation',
+    'מס': 'tax',
+    'הכנסה': 'income',
+    'ביטוח': 'insurance',
+    'לאומי': 'national',
+    'פנסיה': 'pension'
+  };
+
+  let result = documentName.toLowerCase();
+  
+  // Replace Hebrew words with English equivalents
+  Object.entries(hebrewToEnglish).forEach(([hebrew, english]) => {
+    result = result.replace(new RegExp(hebrew, 'g'), english);
+  });
+  
+  // Remove any remaining non-English characters and special characters
+  result = result
+    .replace(/[^a-z0-9\s]/g, '') // Keep only English letters, numbers, and spaces
     .replace(/\s+/g, '_') // Replace spaces with underscores
+    .replace(/_+/g, '_') // Replace multiple underscores with single
+    .replace(/^_|_$/g, '') // Remove leading/trailing underscores
     .trim();
+  
+  // Fallback to 'document' if result is empty
+  return result || 'document';
 };
 
 export const DocumentsPage: React.FC = () => {
