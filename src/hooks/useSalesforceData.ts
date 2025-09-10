@@ -349,6 +349,7 @@ export const useSalesforceData = () => {
     clientData,
     identificationDocuments,
     registerDocuments,
+    bankCatalog: JSON.parse(sessionStorage.getItem('bankCatalog') || '[]'),
     isLoading,
     isDataFresh,
     recordId,

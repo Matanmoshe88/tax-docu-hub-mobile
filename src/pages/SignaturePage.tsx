@@ -12,7 +12,7 @@ import { generateContractPDFBlob } from '@/lib/pdfGenerator';
 
 export const SignaturePage: React.FC = () => {
   const navigate = useNavigate();
-  const { clientData, recordId, registerDocuments } = useSalesforceData();
+  const { clientData, recordId, registerDocuments, bankCatalog } = useSalesforceData();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
@@ -286,28 +286,56 @@ export const SignaturePage: React.FC = () => {
         .from('signatures')
         .getPublicUrl(contractFileName);
 
-      // Find register documents for signature and contract using documentType first, then name fallback
+      // Find signature and agreement documents - first try registerDocuments, then fallback to bankCatalog direct search
       console.log('📋 All Register documents:', registerDocuments);
       console.log('📋 Register documents length:', registerDocuments?.length);
+      console.log('🏦 Full bank catalog:', bankCatalog);
       
-      const signatureDoc = registerDocuments?.find(doc => {
-        console.log('🔍 Checking doc for signature:', doc.name, 'documentType:', doc.documentType);
-        // Prioritize matching by documentType
-        if (doc.documentType === 'Signature') return true;
-        // Fallback to name matching
-        return doc.name.includes('חתימה') || doc.name.toLowerCase().includes('signature');
+      let signatureDoc = registerDocuments?.find(doc => {
+        console.log('🔍 Checking register doc for signature:', doc.name, 'documentType:', doc.documentType);
+        return doc.documentType === 'Signature' || doc.name.includes('חתימה') || doc.name.toLowerCase().includes('signature');
       });
       
-      const contractDoc = registerDocuments?.find(doc => {
-        console.log('🔍 Checking doc for contract:', doc.name, 'documentType:', doc.documentType);
-        // Prioritize matching by documentType
-        if (doc.documentType === 'Agreement') return true;
-        // Fallback to name matching
-        return doc.name.includes('הסכם') || doc.name.toLowerCase().includes('contract') || doc.name.includes('התקשרות');
+      let contractDoc = registerDocuments?.find(doc => {
+        console.log('🔍 Checking register doc for contract:', doc.name, 'documentType:', doc.documentType);
+        return doc.documentType === 'Agreement' || doc.name.includes('הסכם') || doc.name.toLowerCase().includes('contract') || doc.name.includes('התקשרות');
       });
 
-      console.log('✍️ Found signature doc:', signatureDoc);
-      console.log('📄 Found contract doc:', contractDoc);
+      // Fallback: search directly in bankCatalog for Document_Type__c
+      if (!signatureDoc && bankCatalog) {
+        const signatureBankItem = bankCatalog.find((item: any) => item.Document_Type__c === 'Signature');
+        if (signatureBankItem) {
+          console.log('🔄 Found signature in bankCatalog fallback:', signatureBankItem);
+          signatureDoc = {
+            bankId: signatureBankItem.Id,
+            name: signatureBankItem.Name,
+            documentType: signatureBankItem.Document_Type__c,
+            category: signatureBankItem.Catagory__c,
+            displayOrder: signatureBankItem.Display_Order__c || 0,
+            isRequired: signatureBankItem.Is_Required__c || false,
+            status: 'not_uploaded'
+          };
+        }
+      }
+
+      if (!contractDoc && bankCatalog) {
+        const agreementBankItem = bankCatalog.find((item: any) => item.Document_Type__c === 'Agreement');
+        if (agreementBankItem) {
+          console.log('🔄 Found agreement in bankCatalog fallback:', agreementBankItem);
+          contractDoc = {
+            bankId: agreementBankItem.Id,
+            name: agreementBankItem.Name,
+            documentType: agreementBankItem.Document_Type__c,
+            category: agreementBankItem.Catagory__c,
+            displayOrder: agreementBankItem.Display_Order__c || 0,
+            isRequired: agreementBankItem.Is_Required__c || false,
+            status: 'not_uploaded'
+          };
+        }
+      }
+
+      console.log('✍️ Final signature doc:', signatureDoc);
+      console.log('📄 Final contract doc:', contractDoc);
 
       // Send signature to Salesforce (only if we have a matching document type)
       if (signatureDoc) {
