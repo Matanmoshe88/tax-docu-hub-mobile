@@ -41,6 +41,62 @@ export const SignaturePage: React.FC = () => {
     };
   }, [toast]);
 
+  // On load: log which Bank IDs will be used for Signature and Agreement
+  useEffect(() => {
+    try {
+      const safeBankCatalog: any[] = Array.isArray(bankCatalog)
+        ? bankCatalog
+        : JSON.parse(sessionStorage.getItem('bankCatalog') || '[]');
+
+      console.log('🟦 [SignaturePage:init] recordId:', recordId);
+      console.log('🟦 [SignaturePage:init] bankCatalog size:', safeBankCatalog.length);
+
+      const signatureItem = safeBankCatalog.find((item: any) => item.Document_Type__c === 'Signature');
+      const agreementItem = safeBankCatalog.find((item: any) => item.Document_Type__c === 'Agreement');
+
+      if (signatureItem) {
+        console.log('🟩 [SignaturePage:init] Signature bank item', {
+          Id: signatureItem.Id,
+          Name: signatureItem.Name,
+          Category: signatureItem.Catagory__c,
+          Document_Type__c: signatureItem.Document_Type__c,
+        });
+      } else {
+        console.log('🟥 [SignaturePage:init] Signature bank item NOT FOUND in bankCatalog');
+      }
+
+      if (agreementItem) {
+        console.log('🟩 [SignaturePage:init] Agreement bank item', {
+          Id: agreementItem.Id,
+          Name: agreementItem.Name,
+          Category: agreementItem.Catagory__c,
+          Document_Type__c: agreementItem.Document_Type__c,
+        });
+      } else {
+        console.log('🟥 [SignaturePage:init] Agreement bank item NOT FOUND in bankCatalog');
+      }
+
+      const regSig = registerDocuments?.find(
+        (d) =>
+          d.documentType === 'Signature' ||
+          d.name.includes('חתימה') ||
+          d.name.toLowerCase().includes('signature')
+      );
+      const regAgr = registerDocuments?.find(
+        (d) =>
+          d.documentType === 'Agreement' ||
+          d.name.includes('הסכם') ||
+          d.name.toLowerCase().includes('contract') ||
+          d.name.includes('התקשרות')
+      );
+
+      console.log('🟨 [SignaturePage:init] RegisterDocuments Signature:', regSig);
+      console.log('🟨 [SignaturePage:init] RegisterDocuments Agreement:', regAgr);
+    } catch (e) {
+      console.log('⚠️ [SignaturePage:init] Logging error:', e);
+    }
+  }, [recordId, bankCatalog, registerDocuments]);
+
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
