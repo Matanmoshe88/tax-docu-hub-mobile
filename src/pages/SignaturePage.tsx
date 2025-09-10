@@ -282,7 +282,7 @@ export const SignaturePage: React.FC = () => {
       return;
     }
 
-    // Check signature size
+    // Check signature size with multiple validation criteria
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -292,15 +292,62 @@ export const SignaturePage: React.FC = () => {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
     let pixelCount = 0;
+    let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
     
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i + 3] > 0) pixelCount++;
+    // Count pixels and find bounding box
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < canvas.width; x++) {
+        const index = (y * canvas.width + x) * 4;
+        if (data[index + 3] > 0) { // Alpha channel > 0 means pixel is drawn
+          pixelCount++;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
     }
     
-    if (pixelCount < 100) {
+    const totalPixels = canvas.width * canvas.height;
+    const coveragePercentage = (pixelCount / totalPixels) * 100;
+    const boundingWidth = maxX - minX + 1;
+    const boundingHeight = maxY - minY + 1;
+    
+    console.log('Signature validation:', {
+      pixelCount,
+      coveragePercentage: coveragePercentage.toFixed(3),
+      boundingBox: { width: boundingWidth, height: boundingHeight },
+      totalPixels
+    });
+    
+    // Multiple validation criteria
+    const minPixelCount = 500; // Increased from 100
+    const minCoveragePercent = 0.25; // At least 0.25% of canvas
+    const minBoundingWidth = 120; // Minimum signature width
+    const minBoundingHeight = 30; // Minimum signature height
+    
+    if (pixelCount < minPixelCount) {
       toast({
         title: "החתימה קטנה מדי",
-        description: "אנא חתום שוב בצורה ברורה יותר",
+        description: "אנא חתום בצורה מלאה ובולטת יותר",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (coveragePercentage < minCoveragePercent) {
+      toast({
+        title: "החתימה קטנה מדי",
+        description: "החתימה צריכה לכסות שטח גדול יותר",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (boundingWidth < minBoundingWidth || boundingHeight < minBoundingHeight) {
+      toast({
+        title: "החתימה קטנה מדי",
+        description: `החתימה צריכה להיות לפחות ${minBoundingWidth}×${minBoundingHeight} פיקסלים`,
         variant: "destructive",
       });
       return;
