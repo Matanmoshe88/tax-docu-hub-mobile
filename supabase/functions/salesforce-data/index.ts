@@ -23,12 +23,27 @@ interface LeadData {
   fulladress__c: string;
 }
 
-interface DocumentsSingle {
+interface DocumnetBankRecord {
   Id: string;
-  DocumentType__c: string;
-  Status__c: string;
-  doc_url__c: string;
-  CreatedDate: string;
+  Catagory__c: string;
+  Document_Type__c: string;
+  Name: string;
+  Is_Required__c: boolean;
+  Display_Order__c: number;
+}
+
+interface DocsRecord {
+  Id: string;
+  DocumnetsType__c: string;
+  DocumnetsType__r?: {
+    Name: string;
+    Catagory__c: string;
+    Display_Order__c: number;
+  };
+  URL__c: string;
+  PrimaryOrSpouse__c: string;
+  Collection_Date__c: string;
+  Document_Key__c: string;
 }
 
 interface PicklistValue {
@@ -44,8 +59,9 @@ interface SalesforceDataResponse {
   success: boolean;
   data?: {
     leadData: LeadData;
-    documentHubId: string;
-    documents: DocumentsSingle[];
+    portalId: string;
+    bankCatalog: DocumnetBankRecord[];
+    docs: DocsRecord[];
     checkYears: string[];
     accessToken: string;
     instanceUrl: string;
@@ -112,13 +128,13 @@ async function getLeadData(token: SalesforceTokenResponse, leadId: string): Prom
   return leadData;
 }
 
-async function getDocumentHubId(token: SalesforceTokenResponse, leadId: string): Promise<string> {
-  console.log(`🔍 Finding document hub for lead: ${leadId}`);
+async function getDocumentPortalId(token: SalesforceTokenResponse, leadId: string): Promise<string> {
+  console.log(`🔍 Finding DocumentPortal for lead: ${leadId}`);
   
-  const query = `SELECT Id FROM Documents__c WHERE Lead__c='${leadId}' ORDER BY CreatedDate DESC LIMIT 1`;
+  const query = `SELECT Id FROM DocumentPortal__c WHERE Lead__c='${leadId}' ORDER BY CreatedDate DESC LIMIT 1`;
   const encodedQuery = encodeURIComponent(query);
   
-  const hubResponse = await fetch(
+  const portalResponse = await fetch(
     `${token.instance_url}/services/data/v60.0/query/?q=${encodedQuery}`,
     {
       headers: {
@@ -128,20 +144,20 @@ async function getDocumentHubId(token: SalesforceTokenResponse, leadId: string):
     }
   );
 
-  if (!hubResponse.ok) {
-    const errorText = await hubResponse.text();
-    throw new Error(`Failed to fetch document hub: ${hubResponse.status} - ${errorText}`);
+  if (!portalResponse.ok) {
+    const errorText = await portalResponse.text();
+    throw new Error(`Failed to fetch DocumentPortal: ${portalResponse.status} - ${errorText}`);
   }
 
-  const hubData = await hubResponse.json();
+  const portalData = await portalResponse.json();
   
-  if (!hubData.records || hubData.records.length === 0) {
-    throw new Error('No document hub found for this lead');
+  if (!portalData.records || portalData.records.length === 0) {
+    throw new Error('No DocumentPortal found for this lead');
   }
 
-  const hubId = hubData.records[0].Id;
-  console.log(`✅ Document hub found: ${hubId}`);
-  return hubId;
+  const portalId = portalData.records[0].Id;
+  console.log(`✅ DocumentPortal found: ${portalId}`);
+  return portalId;
 }
 
 async function getCheckYearsMetadata(token: SalesforceTokenResponse): Promise<string[]> {
@@ -168,19 +184,36 @@ async function getCheckYearsMetadata(token: SalesforceTokenResponse): Promise<st
   return years;
 }
 
-async function getDocumentStatus(token: SalesforceTokenResponse, hubId: string): Promise<DocumentsSingle[]> {
-  console.log(`📄 Fetching document status for hub: ${hubId}`);
+async function getDocumnetBankCatalog(token: SalesforceTokenResponse): Promise<DocumnetBankRecord[]> {
+  console.log('📚 Fetching DocumnetBank catalog...');
   
-  const documentTypes = [
-    'הסכם התקשרות',
-    'צילום תז קדימה', 
-    'ספח תז',
-    'אישור ניהול חשבון',
-    'צילום רישיון נהיגה'
-  ];
+  const query = `SELECT Id,Catagory__c,Document_Type__c,Name,Is_Required__c,Display_Order__c FROM DocumnetBank__c WHERE IsActive__c = TRUE AND Service__c IN ('TaxReturn') ORDER BY Display_Order__c`;
+  const encodedQuery = encodeURIComponent(query);
   
-  const typesList = documentTypes.map(type => `'${type}'`).join(',');
-  const query = `SELECT Id,DocumentType__c,Status__c,doc_url__c,CreatedDate FROM DocumentsSingles__c WHERE DocumentManager__c='${hubId}' AND DocumentType__c IN (${typesList})`;
+  const bankResponse = await fetch(
+    `${token.instance_url}/services/data/v60.0/query/?q=${encodedQuery}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${token.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  if (!bankResponse.ok) {
+    const errorText = await bankResponse.text();
+    throw new Error(`Failed to fetch DocumnetBank catalog: ${bankResponse.status} - ${errorText}`);
+  }
+
+  const bankData = await bankResponse.json();
+  console.log(`✅ Found ${bankData.records?.length || 0} DocumnetBank records`);
+  return bankData.records || [];
+}
+
+async function getExistingDocs(token: SalesforceTokenResponse, portalId: string): Promise<DocsRecord[]> {
+  console.log(`📄 Fetching existing Docs for portal: ${portalId}`);
+  
+  const query = `SELECT Id,DocumnetsType__c,DocumnetsType__r.Name,DocumnetsType__r.Catagory__c,DocumnetsType__r.Display_Order__c,URL__c,PrimaryOrSpouse__c,Collection_Date__c,Document_Key__c FROM Docs__c WHERE DocumnetPortal__c='${portalId}' AND PrimaryOrSpouse__c='Primary' ORDER BY DocumnetsType__r.Display_Order__c ASC,LastModifiedDate DESC`;
   const encodedQuery = encodeURIComponent(query);
   
   const docsResponse = await fetch(
@@ -195,11 +228,11 @@ async function getDocumentStatus(token: SalesforceTokenResponse, hubId: string):
 
   if (!docsResponse.ok) {
     const errorText = await docsResponse.text();
-    throw new Error(`Failed to fetch documents: ${docsResponse.status} - ${errorText}`);
+    throw new Error(`Failed to fetch existing Docs: ${docsResponse.status} - ${errorText}`);
   }
 
   const docsData = await docsResponse.json();
-  console.log(`✅ Found ${docsData.records?.length || 0} document records`);
+  console.log(`✅ Found ${docsData.records?.length || 0} existing Docs records`);
   return docsData.records || [];
 }
 
@@ -246,11 +279,14 @@ serve(async (req) => {
     // Fetch lead data
     const leadData = await getLeadData(token, leadId);
 
-    // Get document hub ID
-    const documentHubId = await getDocumentHubId(token, leadId);
+    // Get DocumentPortal ID
+    const portalId = await getDocumentPortalId(token, leadId);
 
-    // Get document status
-    const documents = await getDocumentStatus(token, documentHubId);
+    // Get DocumnetBank catalog
+    const bankCatalog = await getDocumnetBankCatalog(token);
+
+    // Get existing Docs
+    const docs = await getExistingDocs(token, portalId);
 
     // Get CheckYears metadata
     const checkYears = await getCheckYearsMetadata(token);
@@ -259,8 +295,9 @@ serve(async (req) => {
       success: true,
       data: {
         leadData,
-        documentHubId,
-        documents,
+        portalId,
+        bankCatalog,
+        docs,
         checkYears,
         accessToken: token.access_token,
         instanceUrl: token.instance_url,

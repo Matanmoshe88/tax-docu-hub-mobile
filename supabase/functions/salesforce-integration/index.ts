@@ -16,7 +16,7 @@ interface SalesforceTokenResponse {
 interface DocumentUploadRequest {
   leadId: string;
   signatureUrl: string;
-  documentType?: string;
+  documnetBankId: string;
   documentName?: string;
 }
 
@@ -51,13 +51,13 @@ async function getSalesforceToken(): Promise<SalesforceTokenResponse> {
   return tokenData;
 }
 
-async function getDocumentHubId(token: SalesforceTokenResponse, leadId: string): Promise<string> {
-  console.log(`🔍 Finding document hub for lead: ${leadId}`);
+async function getDocumentPortalId(token: SalesforceTokenResponse, leadId: string): Promise<string> {
+  console.log(`🔍 Finding DocumentPortal for lead: ${leadId}`);
   
-  const query = `SELECT Id FROM Documents__c WHERE Lead__c='${leadId}' ORDER BY CreatedDate DESC LIMIT 1`;
+  const query = `SELECT Id FROM DocumentPortal__c WHERE Lead__c='${leadId}' ORDER BY CreatedDate DESC LIMIT 1`;
   const encodedQuery = encodeURIComponent(query);
   
-  const hubResponse = await fetch(
+  const portalResponse = await fetch(
     `${token.instance_url}/services/data/v60.0/query/?q=${encodedQuery}`,
     {
       headers: {
@@ -67,113 +67,50 @@ async function getDocumentHubId(token: SalesforceTokenResponse, leadId: string):
     }
   );
 
-  if (!hubResponse.ok) {
-    const errorText = await hubResponse.text();
-    throw new Error(`Failed to fetch document hub: ${hubResponse.status} - ${errorText}`);
+  if (!portalResponse.ok) {
+    const errorText = await portalResponse.text();
+    throw new Error(`Failed to fetch DocumentPortal: ${portalResponse.status} - ${errorText}`);
   }
 
-  const hubData = await hubResponse.json();
+  const portalData = await portalResponse.json();
   
-  if (!hubData.records || hubData.records.length === 0) {
-    throw new Error('No document hub found for this lead');
+  if (!portalData.records || portalData.records.length === 0) {
+    throw new Error('No DocumentPortal found for this lead');
   }
 
-  const hubId = hubData.records[0].Id;
-  console.log(`✅ Document hub found: ${hubId}`);
-  return hubId;
+  const portalId = portalData.records[0].Id;
+  console.log(`✅ DocumentPortal found: ${portalId}`);
+  return portalId;
 }
 
-async function uploadDocumentToSalesforce(
+async function upsertDocumentToSalesforce(
   token: SalesforceTokenResponse,
   leadId: string,
   signatureUrl: string,
-  hubId: string,
-  documentType: string = "חתימה",
-  documentName: string = "חתימה"
+  portalId: string,
+  documnetBankId: string,
+  documentName: string = "Document"
 ): Promise<any> {
-  console.log(`🔄 Processing document for lead: ${leadId}, type: ${documentType}`);
+  console.log(`🔄 Upserting document for lead: ${leadId}, bank: ${documnetBankId}`);
   
-  // Check for existing incomplete record only for contract documents
-  if (documentType === "הסכם התקשרות") {
-    try {
-      console.log(`🔍 Checking for existing ${documentType} record...`);
-      
-      const query = `SELECT Id,Status__c FROM DocumentsSingles__c WHERE Lead__c='${leadId}' AND DocumentManager__c='${hubId}' AND DocumentType__c='${documentType}' ORDER BY CreatedDate DESC LIMIT 1`;
-      const encodedQuery = encodeURIComponent(query);
-      
-      const checkResponse = await fetch(
-        `${token.instance_url}/services/data/v60.0/query/?q=${encodedQuery}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (checkResponse.ok) {
-        const checkData = await checkResponse.json();
-        
-        if (checkData.records && checkData.records.length > 0) {
-          const existingRecord = checkData.records[0];
-          console.log(`📋 Found existing ${documentType} record:`, existingRecord);
-          
-          // If record exists but not completed, update it
-          if (existingRecord.Status__c !== 'completed') {
-            console.log(`🔄 Updating existing ${documentType} record: ${existingRecord.Id}`);
-            
-            const updateData = {
-              doc_url__c: signatureUrl,
-              Status__c: "completed"
-            };
-            
-            const updateResponse = await fetch(
-              `${token.instance_url}/services/data/v60.0/sobjects/DocumentsSingles__c/${existingRecord.Id}`,
-              {
-                method: 'PATCH',
-                headers: {
-                  'Authorization': `Bearer ${token.access_token}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(updateData),
-              }
-            );
-            
-            if (updateResponse.ok) {
-              console.log(`✅ Document updated successfully in Salesforce: ${existingRecord.Id}`);
-              return { id: existingRecord.Id, success: true, errors: [] };
-            } else {
-              const errorText = await updateResponse.text();
-              console.error(`❌ Failed to update record:`, errorText);
-              // Fall through to create new record
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error checking for existing record:', error);
-      // Fall through to create new record
-    }
-  }
+  // Build external key: {DocumnetBank__c Id}_{DocumentPortal__c Id}_Primary
+  const documentKey = `${documnetBankId}_${portalId}_Primary`;
+  console.log(`🔑 Using Document_Key__c: ${documentKey}`);
   
-  // Create new record (original logic)
-  console.log(`🔄 Creating new ${documentType} record`);
-  
-  const salesforceUrl = `${token.instance_url}/services/data/v60.0/sobjects/DocumentsSingles__c/`;
+  const upsertUrl = `${token.instance_url}/services/data/v58.0/sobjects/Docs__c/Document_Key__c/${documentKey}`;
   
   const documentData = {
-    Name: documentName,
-    Lead__c: leadId,
-    DocumentType__c: documentType,
-    doc_url__c: signatureUrl,
-    DocumentManager__c: hubId,
-    Status__c: "completed"
+    DocumnetsType__c: documnetBankId,
+    DocumnetPortal__c: portalId,
+    PrimaryOrSpouse__c: "Primary",
+    URL__c: signatureUrl,
+    Collection_Date__c: new Date().toISOString()
   };
 
-  console.log('📄 Document data:', JSON.stringify(documentData, null, 2));
+  console.log('📄 Document upsert data:', JSON.stringify(documentData, null, 2));
 
-  const response = await fetch(salesforceUrl, {
-    method: 'POST',
+  const response = await fetch(upsertUrl, {
+    method: 'PATCH',
     headers: {
       'Authorization': `Bearer ${token.access_token}`,
       'Content-Type': 'application/json',
@@ -183,12 +120,12 @@ async function uploadDocumentToSalesforce(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('❌ Salesforce document creation failed:', response.status, errorText);
-    throw new Error(`Failed to create document: ${response.status} - ${errorText}`);
+    console.error('❌ Salesforce document upsert failed:', response.status, errorText);
+    throw new Error(`Failed to upsert document: ${response.status} - ${errorText}`);
   }
 
-  const result = await response.json();
-  console.log('✅ Document created successfully in Salesforce:', result);
+  const result = response.status === 204 ? { success: true, updated: true } : await response.json();
+  console.log('✅ Document upserted successfully in Salesforce:', result);
   return result;
 }
 
@@ -211,10 +148,10 @@ serve(async (req) => {
     const body = await req.json() as DocumentUploadRequest;
     console.log('📝 Request body:', JSON.stringify(body, null, 2));
 
-    const { leadId, signatureUrl, documentType, documentName } = body;
+    const { leadId, signatureUrl, documnetBankId, documentName } = body;
 
-    if (!leadId || !signatureUrl) {
-      throw new Error('Missing required fields: leadId and signatureUrl');
+    if (!leadId || !signatureUrl || !documnetBankId) {
+      throw new Error('Missing required fields: leadId, signatureUrl, and documnetBankId');
     }
 
     // Validate environment variables
@@ -230,25 +167,26 @@ serve(async (req) => {
     // Step 1: Get Salesforce access token
     const token = await getSalesforceToken();
 
-    // Step 2: Get document hub ID
-    const hubId = await getDocumentHubId(token, leadId);
+    // Step 2: Get DocumentPortal ID
+    const portalId = await getDocumentPortalId(token, leadId);
 
-    // Step 3: Upload document to Salesforce
-    const uploadResult = await uploadDocumentToSalesforce(
+    // Step 3: Upsert document to Salesforce
+    const upsertResult = await upsertDocumentToSalesforce(
       token, 
       leadId, 
       signatureUrl, 
-      hubId, 
-      documentType, 
+      portalId, 
+      documnetBankId, 
       documentName
     );
 
     const response = {
       success: true,
-      message: 'Document uploaded successfully to Salesforce',
-      salesforceId: uploadResult.id,
+      message: 'Document upserted successfully to Salesforce',
+      salesforceResult: upsertResult,
       leadId,
       signatureUrl,
+      documnetBankId,
     };
 
     console.log('🎉 Salesforce integration completed successfully:', response);

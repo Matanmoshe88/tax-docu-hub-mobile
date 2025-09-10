@@ -15,10 +15,44 @@ interface ClientData {
   checkYears?: string; // Multi-picklist field from Salesforce
 }
 
+interface DocumnetBankRecord {
+  Id: string;
+  Catagory__c: string;
+  Document_Type__c: string;
+  Name: string;
+  Is_Required__c: boolean;
+  Display_Order__c: number;
+}
+
+interface DocsRecord {
+  Id: string;
+  DocumnetsType__c: string;
+  DocumnetsType__r?: {
+    Name: string;
+    Catagory__c: string;
+    Display_Order__c: number;
+  };
+  URL__c: string;
+  PrimaryOrSpouse__c: string;
+  Collection_Date__c: string;
+  Document_Key__c: string;
+}
+
+interface DocumentListItem {
+  bankId: string;
+  name: string;
+  isRequired: boolean;
+  displayOrder: number;
+  category: string;
+  uploadedUrl?: string;
+  uploadedDate?: string;
+  status: 'not_uploaded' | 'uploaded';
+}
+
 interface SalesforceSession {
   accessToken: string;
   instanceUrl: string;
-  documentHubId: string;
+  portalId: string;
   timestamp: number;
 }
 
@@ -33,6 +67,8 @@ export const useSalesforceData = () => {
     address: "",
     commissionRate: ""
   });
+  const [identificationDocuments, setIdentificationDocuments] = useState<DocumentListItem[]>([]);
+  const [registerDocuments, setRegisterDocuments] = useState<DocumentListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDataFresh, setIsDataFresh] = useState(false);
 
@@ -50,7 +86,8 @@ export const useSalesforceData = () => {
     // Check if session data exists and is not expired
     const salesforceSession = sessionStorage.getItem('salesforceSession');
     const leadData = sessionStorage.getItem('leadData');
-    const documentsStatus = sessionStorage.getItem('documentsStatus');
+    const bankCatalog = sessionStorage.getItem('bankCatalog');
+    const existingDocs = sessionStorage.getItem('existingDocs');
     const storedRecordId = sessionStorage.getItem('currentRecordId');
 
     // If record ID has changed, fetch fresh data
@@ -59,7 +96,7 @@ export const useSalesforceData = () => {
       return true;
     }
 
-    if (!salesforceSession || !leadData || !documentsStatus) {
+    if (!salesforceSession || !leadData || !bankCatalog || !existingDocs) {
       console.log('🔄 Missing session data, fetching fresh data');
       return true; // Missing data, need to fetch
     }
@@ -84,7 +121,8 @@ export const useSalesforceData = () => {
     console.log('🔄 Forcing fresh data fetch - clearing session storage');
     sessionStorage.removeItem('salesforceSession');
     sessionStorage.removeItem('leadData');
-    sessionStorage.removeItem('documentsStatus');
+    sessionStorage.removeItem('bankCatalog');
+    sessionStorage.removeItem('existingDocs');
     sessionStorage.removeItem('clientData');
     sessionStorage.removeItem('currentRecordId');
     
@@ -124,9 +162,9 @@ export const useSalesforceData = () => {
         return;
       }
 
-      const { leadData, documentHubId, documents, checkYears, accessToken, instanceUrl } = data.data;
+      const { leadData, portalId, bankCatalog, docs, checkYears, accessToken, instanceUrl } = data.data;
       console.log('✅ Salesforce data loaded successfully');
-      console.log('📊 API Response data:', { leadData, documentHubId, documents, accessToken: '***', instanceUrl });
+      console.log('📊 API Response data:', { leadData, portalId, bankCatalog: bankCatalog?.length || 0, docs: docs?.length || 0, accessToken: '***', instanceUrl });
       console.log('🔍 LeadData fields:', Object.keys(leadData || {}));
       console.log('📱 LeadData phone fields:', {
         MobilePhone: leadData.MobilePhone,
@@ -159,17 +197,61 @@ export const useSalesforceData = () => {
       console.log('📊 Final updatedClientData being set:', updatedClientData);
       setClientData(updatedClientData);
 
+      // Build document lists from bank catalog + existing docs
+      const buildDocumentLists = (bankCatalog: DocumnetBankRecord[], docs: DocsRecord[]) => {
+        const identificationDocs: DocumentListItem[] = [];
+        const registerDocs: DocumentListItem[] = [];
+
+        // Create lookup for existing docs by bank ID
+        const docsLookup = new Map<string, DocsRecord>();
+        docs.forEach(doc => {
+          docsLookup.set(doc.DocumnetsType__c, doc);
+        });
+
+        // Process bank catalog
+        bankCatalog.forEach(bankItem => {
+          const existingDoc = docsLookup.get(bankItem.Id);
+          const documentItem: DocumentListItem = {
+            bankId: bankItem.Id,
+            name: bankItem.Name,
+            isRequired: bankItem.Is_Required__c,
+            displayOrder: bankItem.Display_Order__c,
+            category: bankItem.Catagory__c,
+            uploadedUrl: existingDoc?.URL__c,
+            uploadedDate: existingDoc?.Collection_Date__c,
+            status: existingDoc ? 'uploaded' : 'not_uploaded'
+          };
+
+          if (bankItem.Catagory__c === 'Identification documents') {
+            identificationDocs.push(documentItem);
+          } else if (bankItem.Catagory__c === 'Register Documents') {
+            registerDocs.push(documentItem);
+          }
+        });
+
+        // Sort by display order
+        identificationDocs.sort((a, b) => a.displayOrder - b.displayOrder);
+        registerDocs.sort((a, b) => a.displayOrder - b.displayOrder);
+
+        return { identificationDocs, registerDocs };
+      };
+
+      const { identificationDocs, registerDocs } = buildDocumentLists(bankCatalog || [], docs || []);
+      setIdentificationDocuments(identificationDocs);
+      setRegisterDocuments(registerDocs);
+
       // Store Salesforce session data with timestamp
       const sessionData: SalesforceSession = {
         accessToken,
         instanceUrl,
-        documentHubId,
+        portalId,
         timestamp: Date.now()
       };
 
       sessionStorage.setItem('salesforceSession', JSON.stringify(sessionData));
       sessionStorage.setItem('leadData', JSON.stringify(leadData));
-      sessionStorage.setItem('documentsStatus', JSON.stringify(documents));
+      sessionStorage.setItem('bankCatalog', JSON.stringify(bankCatalog));
+      sessionStorage.setItem('existingDocs', JSON.stringify(docs));
       sessionStorage.setItem('clientData', JSON.stringify(updatedClientData));
       sessionStorage.setItem('currentRecordId', recordId || ''); // Store current record ID
 
@@ -189,13 +271,60 @@ export const useSalesforceData = () => {
 
   const loadDataFromSession = () => {
     const storedClientData = sessionStorage.getItem('clientData');
-    if (storedClientData) {
+    const storedBankCatalog = sessionStorage.getItem('bankCatalog');
+    const storedExistingDocs = sessionStorage.getItem('existingDocs');
+    
+    if (storedClientData && storedBankCatalog && storedExistingDocs) {
       try {
-        const data = JSON.parse(storedClientData);
-        setClientData(data);
+        const clientData = JSON.parse(storedClientData);
+        const bankCatalog = JSON.parse(storedBankCatalog);
+        const docs = JSON.parse(storedExistingDocs);
+        
+        setClientData(clientData);
+        
+        // Rebuild document lists from session data
+        const buildDocumentLists = (bankCatalog: DocumnetBankRecord[], docs: DocsRecord[]) => {
+          const identificationDocs: DocumentListItem[] = [];
+          const registerDocs: DocumentListItem[] = [];
+
+          const docsLookup = new Map<string, DocsRecord>();
+          docs.forEach(doc => {
+            docsLookup.set(doc.DocumnetsType__c, doc);
+          });
+
+          bankCatalog.forEach(bankItem => {
+            const existingDoc = docsLookup.get(bankItem.Id);
+            const documentItem: DocumentListItem = {
+              bankId: bankItem.Id,
+              name: bankItem.Name,
+              isRequired: bankItem.Is_Required__c,
+              displayOrder: bankItem.Display_Order__c,
+              category: bankItem.Catagory__c,
+              uploadedUrl: existingDoc?.URL__c,
+              uploadedDate: existingDoc?.Collection_Date__c,
+              status: existingDoc ? 'uploaded' : 'not_uploaded'
+            };
+
+            if (bankItem.Catagory__c === 'Identification documents') {
+              identificationDocs.push(documentItem);
+            } else if (bankItem.Catagory__c === 'Register Documents') {
+              registerDocs.push(documentItem);
+            }
+          });
+
+          identificationDocs.sort((a, b) => a.displayOrder - b.displayOrder);
+          registerDocs.sort((a, b) => a.displayOrder - b.displayOrder);
+
+          return { identificationDocs, registerDocs };
+        };
+
+        const { identificationDocs, registerDocs } = buildDocumentLists(bankCatalog, docs);
+        setIdentificationDocuments(identificationDocs);
+        setRegisterDocuments(registerDocs);
+        
         setIsDataFresh(true);
       } catch (error) {
-        console.error('Error parsing stored client data:', error);
+        console.error('Error parsing stored session data:', error);
       }
     }
   };
@@ -206,6 +335,8 @@ export const useSalesforceData = () => {
 
   return {
     clientData,
+    identificationDocuments,
+    registerDocuments,
     isLoading,
     isDataFresh,
     recordId,
