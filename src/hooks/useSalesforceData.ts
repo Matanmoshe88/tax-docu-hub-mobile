@@ -308,15 +308,24 @@ export const useSalesforceData = () => {
               status: existingDoc ? 'uploaded' : 'not_uploaded'
             };
 
+            console.log('🔍 Processing bank item:', bankItem.Name, 'Category:', bankItem.Catagory__c, 'Document_Type:', bankItem.Document_Type__c);
+            
             if (bankItem.Catagory__c === 'Identification documents') {
+              console.log('✅ Adding to identification docs:', bankItem.Name);
               identificationDocs.push(documentItem);
             } else if (bankItem.Catagory__c === 'Register Documnets' || bankItem.Catagory__c === 'Register Documents') {
+              console.log('✅ Adding to register docs:', bankItem.Name, 'documentType:', bankItem.Document_Type__c);
               registerDocs.push(documentItem);
+            } else {
+              console.log('⚠️ Unmatched category:', bankItem.Catagory__c, 'for', bankItem.Name);
             }
           });
 
           identificationDocs.sort((a, b) => a.displayOrder - b.displayOrder);
           registerDocs.sort((a, b) => a.displayOrder - b.displayOrder);
+
+          console.log('📊 Final Identification documents (', identificationDocs.length, '):', identificationDocs.map(d => ({ id: d.bankId, name: d.name, documentType: d.documentType, category: d.category })));
+          console.log('📋 Final Register documents (', registerDocs.length, '):', registerDocs.map(d => ({ id: d.bankId, name: d.name, documentType: d.documentType, category: d.category })));
 
           return { identificationDocs, registerDocs };
         };
