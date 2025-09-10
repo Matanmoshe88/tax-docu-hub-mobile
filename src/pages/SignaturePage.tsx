@@ -12,7 +12,7 @@ import { generateContractPDFBlob } from '@/lib/pdfGenerator';
 
 export const SignaturePage: React.FC = () => {
   const navigate = useNavigate();
-  const { clientData, recordId } = useSalesforceData();
+  const { clientData, recordId, registerDocuments } = useSalesforceData();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
@@ -147,14 +147,14 @@ export const SignaturePage: React.FC = () => {
     return publicUrl;
   };
 
-  const callSalesforceIntegration = async (signatureUrl: string, documentType?: string, documentName?: string) => {
-    console.log('🔄 Calling Salesforce integration...');
+  const callSalesforceIntegration = async (signatureUrl: string, documnetBankId: string, documentName?: string) => {
+    console.log('🔄 Calling Salesforce integration...', { documnetBankId, documentName });
     
     const { data, error } = await supabase.functions.invoke('salesforce-integration', {
       body: {
         leadId: recordId,
         signatureUrl,
-        documentType,
+        documnetBankId,
         documentName
       }
     });
@@ -286,18 +286,43 @@ export const SignaturePage: React.FC = () => {
         .from('signatures')
         .getPublicUrl(contractFileName);
 
-      // Send signature to Salesforce
-      toast({
-        title: "שולח ל-Salesforce...",
-        description: "מעביר את החתימה למערכת הניהול",
-      });
-      
-      const salesforceResult = await callSalesforceIntegration(signatureUrl, "חתימה", "חתימה");
-      console.log('✅ Signature uploaded to Salesforce:', salesforceResult);
+      // Find register documents for signature and contract
+      const signatureDoc = registerDocuments?.find(doc => 
+        doc.name.toLowerCase().includes('חתימה') || doc.name.toLowerCase().includes('signature')
+      );
+      const contractDoc = registerDocuments?.find(doc => 
+        doc.name.toLowerCase().includes('הסכם') || doc.name.toLowerCase().includes('contract')
+      );
 
-      // Send contract to Salesforce
-      const contractResult = await callSalesforceIntegration(contractUrl, "הסכם התקשרות", "הסכם התקשרות");
-      console.log('✅ Contract uploaded to Salesforce:', contractResult);
+      console.log('📋 Register documents:', registerDocuments);
+      console.log('✍️ Found signature doc:', signatureDoc);
+      console.log('📄 Found contract doc:', contractDoc);
+
+      // Send signature to Salesforce (only if we have a matching document type)
+      if (signatureDoc) {
+        toast({
+          title: "שולח חתימה ל-Salesforce...",
+          description: "מעביר את החתימה למערכת הניהול",
+        });
+        
+        const salesforceResult = await callSalesforceIntegration(signatureUrl, signatureDoc.bankId, "חתימה");
+        console.log('✅ Signature uploaded to Salesforce:', salesforceResult);
+      } else {
+        console.log('⚠️ No signature document type found in register documents');
+      }
+
+      // Send contract to Salesforce (only if we have a matching document type)
+      if (contractDoc) {
+        toast({
+          title: "שולח הסכם ל-Salesforce...",
+          description: "מעביר את ההסכם למערכת הניהול",
+        });
+        
+        const contractResult = await callSalesforceIntegration(contractUrl, contractDoc.bankId, "הסכם התקשרות");
+        console.log('✅ Contract uploaded to Salesforce:', contractResult);
+      } else {
+        console.log('⚠️ No contract document type found in register documents');
+      }
       
       setIsSigned(true);
       toast({
