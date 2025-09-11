@@ -139,8 +139,9 @@ export const SignaturePage: React.FC = () => {
     if (!ctx) return;
 
     let clientX, clientY;
+    const isTouch = 'touches' in e;
     
-    if ('touches' in e) {
+    if (isTouch) {
       e.preventDefault();
       clientX = e.touches[0].clientX;
       clientY = e.touches[0].clientY;
@@ -152,7 +153,8 @@ export const SignaturePage: React.FC = () => {
     const x = (clientX - rect.left) * scaleX;
     const y = (clientY - rect.top) * scaleY;
 
-    ctx.lineWidth = 3;
+    // Use thicker line for touch input to help with validation
+    ctx.lineWidth = isTouch ? 5 : 3;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#1e40af'; // Blue color for pen-like appearance
@@ -341,7 +343,7 @@ export const SignaturePage: React.FC = () => {
       strokeContinuity = continuousStrokes / Math.min(sortedPixels.length, 100);
     }
     
-    console.log('AGGRESSIVE Signature validation:', {
+    console.log('Signature validation (lenient):', {
       pixelCount,
       coveragePercentage: coveragePercentage.toFixed(3),
       boundingBox: { width: boundingWidth, height: boundingHeight },
@@ -351,64 +353,71 @@ export const SignaturePage: React.FC = () => {
       totalPixels
     });
     
-    // Balanced, still strong validation criteria (adaptive to canvas size)
-    const minPixelCount = Math.max(900, Math.floor(totalPixels * 0.004)); // ~0.4% of canvas pixels or 900
-    const minCoveragePercent = 0.4; // must cover at least 0.4% of the canvas
-    const minBoundingWidth = Math.max(150, Math.floor(canvas.width * 0.16)); // >=150px or 16% of width
-    const minBoundingHeight = Math.max(45, Math.floor(canvas.height * 0.15)); // >=45px or 15% of height
-    const minDensity = 0.10; // 10% density within bounding box
-    const minComplexity = 160; // variation in X+Y spread
-    const minStrokeContinuity = 0.2; // ensure mostly continuous strokes
+    // VERY LENIENT validation - much easier to pass
+    const baseMinPixelCount = Math.max(200, Math.floor(totalPixels * 0.0008)); // Just 0.08% of canvas or 200 pixels
+    const baseMinCoveragePercent = 0.08; // Only need 0.08% coverage
+    const baseMinBoundingWidth = Math.max(60, Math.floor(canvas.width * 0.08)); // Just 8% of width or 60px
+    const baseMinBoundingHeight = Math.max(20, Math.floor(canvas.height * 0.06)); // Just 6% of height or 20px
+    const baseMinDensity = 0.03; // Very low density requirement
+    const baseMinComplexity = 30; // Very low complexity requirement
+    const baseMinStrokeContinuity = 0.05; // Very low continuity requirement
     
-    if (pixelCount < minPixelCount) {
-      toast({
-        title: "חתימה לא מספקת",
-        description: `נדרשים לפחות ${minPixelCount} פיקסלים. נמצאו: ${pixelCount}`,
-        variant: "destructive",
-      });
-      return;
+    // Apply mobile-friendly adjustments (even more lenient for touch)
+    const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
+    const mobileFactor = isMobile ? 0.7 : 1.0; // 30% more lenient for mobile
+    
+    const minPixelCount = Math.floor(baseMinPixelCount * mobileFactor);
+    const minCoveragePercent = baseMinCoveragePercent * mobileFactor;
+    const minBoundingWidth = Math.floor(baseMinBoundingWidth * mobileFactor);
+    const minBoundingHeight = Math.floor(baseMinBoundingHeight * mobileFactor);
+    const minDensity = baseMinDensity * mobileFactor;
+    const minComplexity = Math.floor(baseMinComplexity * mobileFactor);
+    const minStrokeContinuity = baseMinStrokeContinuity * mobileFactor;
+    
+    // Near-miss tolerance - if only one metric fails within 20%, accept with info message
+    const failures = [];
+    if (pixelCount < minPixelCount) failures.push('pixels');
+    if (coveragePercentage < minCoveragePercent) failures.push('coverage');
+    if (boundingWidth < minBoundingWidth || boundingHeight < minBoundingHeight) failures.push('size');
+    if (densityInBounds < minDensity) failures.push('density');
+    if (complexityScore < minComplexity) failures.push('complexity');
+    if (strokeContinuity < minStrokeContinuity) failures.push('continuity');
+    
+    // If only one failure and it's a near-miss (within 20% of requirement), accept it
+    if (failures.length === 1) {
+      const nearMissTolerance = 0.8; // Accept if within 80% of requirement
+      let isNearMiss = false;
+      
+      if (failures[0] === 'pixels' && pixelCount >= minPixelCount * nearMissTolerance) isNearMiss = true;
+      if (failures[0] === 'coverage' && coveragePercentage >= minCoveragePercent * nearMissTolerance) isNearMiss = true;
+      if (failures[0] === 'size' && (boundingWidth >= minBoundingWidth * nearMissTolerance || boundingHeight >= minBoundingHeight * nearMissTolerance)) isNearMiss = true;
+      if (failures[0] === 'density' && densityInBounds >= minDensity * nearMissTolerance) isNearMiss = true;
+      if (failures[0] === 'complexity' && complexityScore >= minComplexity * nearMissTolerance) isNearMiss = true;
+      if (failures[0] === 'continuity' && strokeContinuity >= minStrokeContinuity * nearMissTolerance) isNearMiss = true;
+      
+      if (isNearMiss) {
+        toast({
+          title: "חתימה התקבלה",
+          description: "החתימה עברה את הבדיקה בהצלחה",
+          variant: "default",
+        });
+        // Continue with submission - don't return
+      }
     }
     
-    if (coveragePercentage < minCoveragePercent) {
+    // Only fail if multiple metrics fail or single failure is too far from requirement
+    if (failures.length > 1 || (failures.length === 1 && !failures.some(f => {
+      if (f === 'pixels') return pixelCount >= minPixelCount * 0.8;
+      if (f === 'coverage') return coveragePercentage >= minCoveragePercent * 0.8;
+      if (f === 'size') return (boundingWidth >= minBoundingWidth * 0.8 || boundingHeight >= minBoundingHeight * 0.8);
+      if (f === 'density') return densityInBounds >= minDensity * 0.8;
+      if (f === 'complexity') return complexityScore >= minComplexity * 0.8;
+      if (f === 'continuity') return strokeContinuity >= minStrokeContinuity * 0.8;
+      return false;
+    }))) {
       toast({
-        title: "החתימה קטנה מדי",
-        description: `החתימה חייבת לכסות לפחות ${minCoveragePercent}% מהתיבה`,
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (boundingWidth < minBoundingWidth || boundingHeight < minBoundingHeight) {
-      toast({
-        title: "החתימה קטנה מדי",
-        description: `נדרש גודל מינימלי: ${minBoundingWidth}×${minBoundingHeight} פיקסלים`,
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (densityInBounds < minDensity) {
-      toast({
-        title: "החתימה דלילה מדי",
-        description: "אנא חתום בצורה מלאה ורציפה יותר",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (complexityScore < minComplexity) {
-      toast({
-        title: "החתימה פשוטה מדי",
-        description: "החתימה צריכה להיות מורכבת יותר ולא קו ישר",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (strokeContinuity < minStrokeContinuity) {
-      toast({
-        title: "החתימה לא רציפה",
-        description: "אנא חתום בתנועות רציפות ולא נקודות מפוזרות",
+        title: "אנא חתום שוב",
+        description: `החתימה קצרה מדי או לא מלאה. אנא נסה שוב עם חתימה מלאה יותר.`,
         variant: "destructive",
       });
       return;
