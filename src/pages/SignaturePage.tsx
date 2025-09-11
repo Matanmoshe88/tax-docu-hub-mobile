@@ -351,14 +351,14 @@ export const SignaturePage: React.FC = () => {
       totalPixels
     });
     
-    // AGGRESSIVE validation criteria
-    const minPixelCount = 2000; // Much higher - roughly a full signature
-    const minCoveragePercent = 0.8; // Must cover significant canvas area
-    const minBoundingWidth = 200; // Much wider signature required
-    const minBoundingHeight = 60; // Much taller signature required
-    const minDensity = 0.15; // Signature must be dense within bounds
-    const minComplexity = 250; // Must have variation in x and y
-    const minStrokeContinuity = 0.3; // Must have connected strokes
+    // Balanced, still strong validation criteria (adaptive to canvas size)
+    const minPixelCount = Math.max(900, Math.floor(totalPixels * 0.004)); // ~0.4% of canvas pixels or 900
+    const minCoveragePercent = 0.4; // must cover at least 0.4% of the canvas
+    const minBoundingWidth = Math.max(150, Math.floor(canvas.width * 0.16)); // >=150px or 16% of width
+    const minBoundingHeight = Math.max(45, Math.floor(canvas.height * 0.15)); // >=45px or 15% of height
+    const minDensity = 0.10; // 10% density within bounding box
+    const minComplexity = 160; // variation in X+Y spread
+    const minStrokeContinuity = 0.2; // ensure mostly continuous strokes
     
     if (pixelCount < minPixelCount) {
       toast({
