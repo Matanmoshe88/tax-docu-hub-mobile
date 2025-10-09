@@ -33,20 +33,10 @@ const getDocumentIcon = (name: string) => {
   return User;
 };
 
-// Helper function to get years folder (e.g., "2020-2024")
-const getYearsFolder = () => {
-  const currentYear = new Date().getFullYear();
-  const startYear = currentYear - 4; // 5 year range
-  return `${startYear}-${currentYear}`;
-};
-
 export const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { clientData, isLoading, recordId, isDataFresh, identificationDocuments, refetchData, bankCatalog } = useSalesforceData();
+  const { clientData, isLoading, recordId, isDataFresh, identificationDocuments } = useSalesforceData();
   const { toast } = useToast();
-  
-  // Optimistic UI state - track uploads before Salesforce confirms
-  const [tempUploaded, setTempUploaded] = useState<Set<string>>(new Set());
   
   // Use documents from Salesforce data
   const documents = identificationDocuments || [];
@@ -54,33 +44,19 @@ export const DocumentsPage: React.FC = () => {
   // Documents are already loaded with their status from Salesforce
   console.log('📋 DocumentsPage identificationDocuments:', identificationDocuments);
 
-  // Check if all required documents are uploaded (including optimistic uploads)
+  // Check if all required documents are uploaded
   const requiredDocuments = documents.filter(doc => doc.isRequired);
-  const uploadedRequiredDocuments = requiredDocuments.filter(doc => 
-    doc.status === 'uploaded' || tempUploaded.has(doc.bankId)
-  );
+  const uploadedRequiredDocuments = requiredDocuments.filter(doc => doc.status === 'uploaded');
   const canFinish = requiredDocuments.length > 0 && uploadedRequiredDocuments.length === requiredDocuments.length;
 
   const uploadDocumentToStorage = async (file: File, bankId: string): Promise<string> => {
     console.log('🔄 Uploading document to Supabase storage...');
     
-    // Find document from bank catalog for Document_Type__c
-    const bankDocument = bankCatalog?.find(item => item.Id === bankId);
-    const filetype = bankDocument?.Document_Type__c || 'document';
-    
-    // Create new file structure: {clientRealId}/{yearsFolder}/{filetype}_{recordId}_{timestamp}.{ext}
-    const clientRealId = clientData?.idNumber || recordId; // Use client's real ID number
-    const yearsFolder = getYearsFolder();
-    const timestamp = Date.now();
-    const fileExtension = file.name.split('.').pop();
-    const fileName = `${filetype}_${recordId}_${timestamp}.${fileExtension}`;
-    const filePath = `${clientRealId}/${yearsFolder}/${fileName}`;
-    
-    console.log('📁 New file structure:', { clientRealId, yearsFolder, fileName, filePath });
+    const fileName = `document-${bankId}-${recordId}-${Date.now()}.${file.name.split('.').pop()}`;
     
     const { data, error } = await supabase.storage
       .from('signatures')
-      .upload(filePath, file, {
+      .upload(fileName, file, {
         contentType: file.type,
         upsert: false
       });
@@ -93,7 +69,7 @@ export const DocumentsPage: React.FC = () => {
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage
       .from('signatures')
-      .getPublicUrl(filePath);
+      .getPublicUrl(fileName);
 
     console.log('✅ Document uploaded to storage:', publicUrl);
     return publicUrl;
@@ -140,38 +116,7 @@ export const DocumentsPage: React.FC = () => {
 
       await sendDocumentToSalesforce(documentUrl, bankId);
 
-      // Optimistic UI - immediately show as uploaded
-      setTempUploaded(prev => new Set([...prev, bankId]));
-
-      // Background refresh with retries
-      const refreshWithRetry = async (attempts = 3) => {
-        for (let i = 0; i < attempts; i++) {
-          try {
-            await new Promise(resolve => setTimeout(resolve, 600)); // 600ms delay
-            await refetchData();
-            
-            // Check if the real data now shows this document as uploaded
-            const updatedDoc = identificationDocuments?.find(d => d.bankId === bankId);
-            if (updatedDoc?.status === 'uploaded') {
-              // Clear optimistic state since real data confirms upload
-              setTempUploaded(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(bankId);
-                return newSet;
-              });
-              break;
-            }
-          } catch (error) {
-            console.warn(`Refresh attempt ${i + 1} failed:`, error);
-            if (i === attempts - 1) {
-              console.error('All refresh attempts failed');
-            }
-          }
-        }
-      };
-      
-      // Start background refresh (don't await)
-      refreshWithRetry();
+      // Note: Document state is managed by useSalesforceData hook and will be refreshed
 
       toast({
         title: "הקובץ הועלה בהצלחה! 🎉",
@@ -372,9 +317,9 @@ export const DocumentsPage: React.FC = () => {
 
         {/* Documents List */}
         <div className="space-y-4">
-        {documents.map((doc) => {
+          {documents.map((doc) => {
             const DocumentIcon = getDocumentIcon(doc.name);
-            const isUploaded = doc.status === 'uploaded' || tempUploaded.has(doc.bankId);
+            const isUploaded = doc.status === 'uploaded';
             return (
             <Card 
               key={doc.bankId} 

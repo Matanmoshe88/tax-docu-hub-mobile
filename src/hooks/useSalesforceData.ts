@@ -36,7 +36,6 @@ interface DocsRecord {
   PrimaryOrSpouse__c: string;
   Collection_Date__c: string;
   Document_Key__c: string;
-  Status__c?: string;
 }
 
 interface DocumentListItem {
@@ -222,7 +221,7 @@ export const useSalesforceData = () => {
             documentType: bankItem.Document_Type__c || '',
             uploadedUrl: existingDoc?.URL__c,
             uploadedDate: existingDoc?.Collection_Date__c,
-            status: existingDoc?.Status__c === 'Collected' ? 'uploaded' : 'not_uploaded'
+            status: existingDoc ? 'uploaded' : 'not_uploaded'
           };
 
           if (bankItem.Catagory__c === 'Identification documents') {

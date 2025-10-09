@@ -219,7 +219,7 @@ async function getExistingDocs(token: SalesforceTokenResponse, portalId: string 
     return [];
   }
   
-  const query = `SELECT Id,DocumnetsType__c,DocumnetsType__r.Name,DocumnetsType__r.Catagory__c,DocumnetsType__r.Display_Order__c,URL__c,PrimaryOrSpouse__c,Collection_Date__c,Document_Key__c,Status__c FROM Docs__c WHERE DocumnetPortal__c='${portalId}' AND PrimaryOrSpouse__c='Primary' ORDER BY DocumnetsType__r.Display_Order__c ASC,LastModifiedDate DESC`;
+  const query = `SELECT Id,DocumnetsType__c,DocumnetsType__r.Name,DocumnetsType__r.Catagory__c,DocumnetsType__r.Display_Order__c,URL__c,PrimaryOrSpouse__c,Collection_Date__c,Document_Key__c FROM Docs__c WHERE DocumnetPortal__c='${portalId}' AND PrimaryOrSpouse__c='Primary' ORDER BY DocumnetsType__r.Display_Order__c ASC,LastModifiedDate DESC`;
   const encodedQuery = encodeURIComponent(query);
   
   const docsResponse = await fetch(

@@ -139,9 +139,8 @@ export const SignaturePage: React.FC = () => {
     if (!ctx) return;
 
     let clientX, clientY;
-    const isTouch = 'touches' in e;
     
-    if (isTouch) {
+    if ('touches' in e) {
       e.preventDefault();
       clientX = e.touches[0].clientX;
       clientY = e.touches[0].clientY;
@@ -153,8 +152,7 @@ export const SignaturePage: React.FC = () => {
     const x = (clientX - rect.left) * scaleX;
     const y = (clientY - rect.top) * scaleY;
 
-    // Use thicker line for touch input to help with validation
-    ctx.lineWidth = isTouch ? 5 : 3;
+    ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#1e40af'; // Blue color for pen-like appearance
@@ -179,28 +177,14 @@ export const SignaturePage: React.FC = () => {
     setHasSignature(false);
   };
 
-  // Helper function to get years folder (e.g., "2020-2024")
-  const getYearsFolder = () => {
-    const currentYear = new Date().getFullYear();
-    const startYear = currentYear - 4; // 5 year range
-    return `${startYear}-${currentYear}`;
-  };
-
   const uploadSignatureToStorage = async (signatureBlob: Blob): Promise<string> => {
     console.log('🔄 Uploading signature to Supabase storage...');
     
-    // Create new file structure: {clientRealId}/{yearsFolder}/{filetype}_{recordId}_{timestamp}.png
-    const clientRealId = clientData?.idNumber || recordId; // Use client's real ID number
-    const yearsFolder = getYearsFolder();
-    const timestamp = Date.now();
-    const fileName = `Signature_${recordId}_${timestamp}.png`;
-    const filePath = `${clientRealId}/${yearsFolder}/${fileName}`;
-    
-    console.log('📁 New signature file structure:', { clientRealId, yearsFolder, fileName, filePath });
+    const fileName = `signature-${recordId}-${Date.now()}.png`;
     
     const { data, error } = await supabase.storage
       .from('signatures')
-      .upload(filePath, signatureBlob, {
+      .upload(fileName, signatureBlob, {
         contentType: 'image/png',
         upsert: false
       });
@@ -213,7 +197,7 @@ export const SignaturePage: React.FC = () => {
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage
       .from('signatures')
-      .getPublicUrl(filePath);
+      .getPublicUrl(fileName);
 
     console.log('✅ Signature uploaded successfully:', publicUrl);
     return publicUrl;
@@ -284,7 +268,7 @@ export const SignaturePage: React.FC = () => {
       return;
     }
 
-    // AGGRESSIVE signature validation with multiple sophisticated checks
+    // Check signature size
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -294,130 +278,15 @@ export const SignaturePage: React.FC = () => {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
     let pixelCount = 0;
-    let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
-    const drawnPixels: {x: number, y: number}[] = [];
     
-    // Count pixels, find bounding box, and collect drawn pixels
-    for (let y = 0; y < canvas.height; y++) {
-      for (let x = 0; x < canvas.width; x++) {
-        const index = (y * canvas.width + x) * 4;
-        if (data[index + 3] > 0) { // Alpha channel > 0 means pixel is drawn
-          pixelCount++;
-          minX = Math.min(minX, x);
-          minY = Math.min(minY, y);
-          maxX = Math.max(maxX, x);
-          maxY = Math.max(maxY, y);
-          drawnPixels.push({x, y});
-        }
-      }
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] > 0) pixelCount++;
     }
     
-    const totalPixels = canvas.width * canvas.height;
-    const coveragePercentage = (pixelCount / totalPixels) * 100;
-    const boundingWidth = maxX - minX + 1;
-    const boundingHeight = maxY - minY + 1;
-    const boundingArea = boundingWidth * boundingHeight;
-    const densityInBounds = pixelCount / boundingArea;
-    
-    // Calculate signature complexity - check for variation in positions
-    let complexityScore = 0;
-    if (drawnPixels.length > 1) {
-      const xPositions = drawnPixels.map(p => p.x);
-      const yPositions = drawnPixels.map(p => p.y);
-      const xVariance = Math.max(...xPositions) - Math.min(...xPositions);
-      const yVariance = Math.max(...yPositions) - Math.min(...yPositions);
-      complexityScore = xVariance + yVariance;
-    }
-    
-    // Check for stroke continuity - measure gaps between drawn pixels
-    let strokeContinuity = 0;
-    if (drawnPixels.length > 10) {
-      const sortedPixels = drawnPixels.sort((a, b) => a.x - b.x || a.y - b.y);
-      let continuousStrokes = 0;
-      for (let i = 1; i < Math.min(sortedPixels.length, 100); i++) {
-        const prev = sortedPixels[i-1];
-        const curr = sortedPixels[i];
-        const distance = Math.sqrt(Math.pow(curr.x - prev.x, 2) + Math.pow(curr.y - prev.y, 2));
-        if (distance < 5) continuousStrokes++;
-      }
-      strokeContinuity = continuousStrokes / Math.min(sortedPixels.length, 100);
-    }
-    
-    console.log('Signature validation (lenient):', {
-      pixelCount,
-      coveragePercentage: coveragePercentage.toFixed(3),
-      boundingBox: { width: boundingWidth, height: boundingHeight },
-      densityInBounds: densityInBounds.toFixed(3),
-      complexityScore,
-      strokeContinuity: strokeContinuity.toFixed(3),
-      totalPixels
-    });
-    
-    // VERY LENIENT validation - much easier to pass
-    const baseMinPixelCount = Math.max(200, Math.floor(totalPixels * 0.0008)); // Just 0.08% of canvas or 200 pixels
-    const baseMinCoveragePercent = 0.08; // Only need 0.08% coverage
-    const baseMinBoundingWidth = Math.max(60, Math.floor(canvas.width * 0.08)); // Just 8% of width or 60px
-    const baseMinBoundingHeight = Math.max(20, Math.floor(canvas.height * 0.06)); // Just 6% of height or 20px
-    const baseMinDensity = 0.03; // Very low density requirement
-    const baseMinComplexity = 30; // Very low complexity requirement
-    const baseMinStrokeContinuity = 0.05; // Very low continuity requirement
-    
-    // Apply mobile-friendly adjustments (even more lenient for touch)
-    const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
-    const mobileFactor = isMobile ? 0.7 : 1.0; // 30% more lenient for mobile
-    
-    const minPixelCount = Math.floor(baseMinPixelCount * mobileFactor);
-    const minCoveragePercent = baseMinCoveragePercent * mobileFactor;
-    const minBoundingWidth = Math.floor(baseMinBoundingWidth * mobileFactor);
-    const minBoundingHeight = Math.floor(baseMinBoundingHeight * mobileFactor);
-    const minDensity = baseMinDensity * mobileFactor;
-    const minComplexity = Math.floor(baseMinComplexity * mobileFactor);
-    const minStrokeContinuity = baseMinStrokeContinuity * mobileFactor;
-    
-    // Near-miss tolerance - if only one metric fails within 20%, accept with info message
-    const failures = [];
-    if (pixelCount < minPixelCount) failures.push('pixels');
-    if (coveragePercentage < minCoveragePercent) failures.push('coverage');
-    if (boundingWidth < minBoundingWidth || boundingHeight < minBoundingHeight) failures.push('size');
-    if (densityInBounds < minDensity) failures.push('density');
-    if (complexityScore < minComplexity) failures.push('complexity');
-    if (strokeContinuity < minStrokeContinuity) failures.push('continuity');
-    
-    // If only one failure and it's a near-miss (within 20% of requirement), accept it
-    if (failures.length === 1) {
-      const nearMissTolerance = 0.8; // Accept if within 80% of requirement
-      let isNearMiss = false;
-      
-      if (failures[0] === 'pixels' && pixelCount >= minPixelCount * nearMissTolerance) isNearMiss = true;
-      if (failures[0] === 'coverage' && coveragePercentage >= minCoveragePercent * nearMissTolerance) isNearMiss = true;
-      if (failures[0] === 'size' && (boundingWidth >= minBoundingWidth * nearMissTolerance || boundingHeight >= minBoundingHeight * nearMissTolerance)) isNearMiss = true;
-      if (failures[0] === 'density' && densityInBounds >= minDensity * nearMissTolerance) isNearMiss = true;
-      if (failures[0] === 'complexity' && complexityScore >= minComplexity * nearMissTolerance) isNearMiss = true;
-      if (failures[0] === 'continuity' && strokeContinuity >= minStrokeContinuity * nearMissTolerance) isNearMiss = true;
-      
-      if (isNearMiss) {
-        toast({
-          title: "חתימה התקבלה",
-          description: "החתימה עברה את הבדיקה בהצלחה",
-          variant: "default",
-        });
-        // Continue with submission - don't return
-      }
-    }
-    
-    // Only fail if multiple metrics fail or single failure is too far from requirement
-    if (failures.length > 1 || (failures.length === 1 && !failures.some(f => {
-      if (f === 'pixels') return pixelCount >= minPixelCount * 0.8;
-      if (f === 'coverage') return coveragePercentage >= minCoveragePercent * 0.8;
-      if (f === 'size') return (boundingWidth >= minBoundingWidth * 0.8 || boundingHeight >= minBoundingHeight * 0.8);
-      if (f === 'density') return densityInBounds >= minDensity * 0.8;
-      if (f === 'complexity') return complexityScore >= minComplexity * 0.8;
-      if (f === 'continuity') return strokeContinuity >= minStrokeContinuity * 0.8;
-      return false;
-    }))) {
+    if (pixelCount < 100) {
       toast({
-        title: "אנא חתום שוב",
-        description: `החתימה קצרה מדי או לא מלאה. אנא נסה שוב עם חתימה מלאה יותר.`,
+        title: "החתימה קטנה מדי",
+        description: "אנא חתום שוב בצורה ברורה יותר",
         variant: "destructive",
       });
       return;
@@ -456,18 +325,11 @@ export const SignaturePage: React.FC = () => {
       
       const contractBlob = await generateSignedContract(signatureDataURL);
       
-      // Upload contract to storage with new structure
-      const clientRealId = clientData?.idNumber || recordId; // Use client's real ID number
-      const yearsFolder = getYearsFolder();
-      const timestamp = Date.now();
-      const contractFileName = `Agreement_${recordId}_${timestamp}.pdf`;
-      const contractFilePath = `${clientRealId}/${yearsFolder}/${contractFileName}`;
-      
-      console.log('📁 New contract file structure:', { clientRealId, yearsFolder, contractFileName, contractFilePath });
-      
+      // Upload contract to storage
+      const contractFileName = `contract-${recordId}-${Date.now()}.pdf`;
       const { data: contractData, error: contractError } = await supabase.storage
         .from('signatures')
-        .upload(contractFilePath, contractBlob, {
+        .upload(contractFileName, contractBlob, {
           contentType: 'application/pdf',
           upsert: false
         });
@@ -478,7 +340,7 @@ export const SignaturePage: React.FC = () => {
 
       const { data: { publicUrl: contractUrl } } = supabase.storage
         .from('signatures')
-        .getPublicUrl(contractFilePath);
+        .getPublicUrl(contractFileName);
 
       // Prefer direct lookup in bankCatalog by Document_Type__c, then fallback to registerDocuments
       const safeBankCatalog: any[] = Array.isArray(bankCatalog)

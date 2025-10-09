@@ -11,41 +11,53 @@ import { generateContractText } from '@/lib/contractUtils';
 export const ContractPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { clientData, isLoading, recordId, bankCatalog } = useSalesforceData();
+  const { clientData, isLoading, recordId } = useSalesforceData();
 
-  // Check if user already completed contract by looking at latest documents
+  // Check if contract is already completed and navigate to documents if so
   useEffect(() => {
-    if (isLoading || !clientData || !bankCatalog) return;
-    
-    // Get existing docs from sessionStorage
-    const existingDocs = JSON.parse(sessionStorage.getItem('existingDocs') || '[]');
-    
-    console.log('🔍 Contract status check - bankCatalog:', bankCatalog);
-    console.log('🔍 Contract status check - existingDocs:', existingDocs);
-    
-    // Find "הסכם התקשרות" in bank catalog
-    const agreementBankDoc = bankCatalog.find((doc: any) => 
-      doc.Name === "הסכם התקשרות"
-    );
-    
-    if (agreementBankDoc) {
-      console.log('📋 Found agreement document in catalog:', agreementBankDoc);
+    if (!isLoading && recordId) {
+      const documentsStatus = sessionStorage.getItem('documentsStatus');
       
-      // Find corresponding uploaded document with Status__c === 'Collected'
-      const uploadedAgreement = existingDocs.find((doc: any) => 
-        doc.DocumnetsType__c === agreementBankDoc.Id && doc.Status__c === 'Collected'
-      );
+      console.log('🔍 Checking contract status on ContractPage...');
+      console.log('📋 documentsStatus from session:', documentsStatus);
       
-      if (uploadedAgreement) {
-        console.log('✅ Contract already completed with status "Collected", redirecting to documents:', uploadedAgreement);
-        navigate(`/documents/${recordId}`);
+      if (documentsStatus) {
+        try {
+          const documents = JSON.parse(documentsStatus);
+          console.log('📄 All documents:', documents);
+          
+          // Find the contract document (הסכם התקשרות)
+          const contractDocs = documents.filter((doc: any) => doc.DocumentType__c === 'הסכם התקשרות');
+          console.log('📝 Contract documents found:', contractDocs);
+          
+          if (contractDocs.length > 0) {
+            // Get the latest contract document
+            const latestContract = contractDocs.reduce((latest: any, current: any) => 
+              new Date(current.CreatedDate) > new Date(latest.CreatedDate) ? current : latest
+            );
+            
+            console.log('📋 Latest contract document:', latestContract);
+            console.log(`📋 Status: ${latestContract.Status__c}, URL: ${latestContract.doc_url__c}`);
+            
+            // Check if contract is completed or has a URL (indicating it was signed)
+            if (latestContract.Status__c === 'completed' || (latestContract.doc_url__c && latestContract.doc_url__c !== null)) {
+              console.log('✅ Contract already completed, redirecting to documents page');
+              navigate(`/documents/${recordId}`, { replace: true });
+              return;
+            } else {
+              console.log('❌ Contract not completed yet');
+            }
+          } else {
+            console.log('❌ No contract documents found');
+          }
+        } catch (error) {
+          console.error('Error checking contract status:', error);
+        }
       } else {
-        console.log('❌ Contract not completed or status not "Collected"');
+        console.log('❌ No documentsStatus found in sessionStorage');
       }
-    } else {
-      console.log('❌ Agreement document not found in bank catalog');
     }
-  }, [isLoading, clientData, bankCatalog, recordId, navigate]);
+  }, [isLoading, recordId, navigate]);
 
   // Disable browser back button
   useEffect(() => {
