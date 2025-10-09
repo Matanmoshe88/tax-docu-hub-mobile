@@ -177,14 +177,28 @@ export const SignaturePage: React.FC = () => {
     setHasSignature(false);
   };
 
+  // Helper function to get years folder (e.g., "2020-2024")
+  const getYearsFolder = () => {
+    const currentYear = new Date().getFullYear();
+    const startYear = currentYear - 4; // 5 year range
+    return `${startYear}-${currentYear}`;
+  };
+
   const uploadSignatureToStorage = async (signatureBlob: Blob): Promise<string> => {
     console.log('🔄 Uploading signature to Supabase storage...');
     
-    const fileName = `signature-${recordId}-${Date.now()}.png`;
+    // Create new file structure: {clientId}/{yearsFolder}/{filetype}_{recordId}_{timestamp}.png
+    const clientId = recordId; // Using recordId as clientId (Salesforce Lead ID)
+    const yearsFolder = getYearsFolder();
+    const timestamp = Date.now();
+    const fileName = `signature_${recordId}_${timestamp}.png`;
+    const filePath = `${clientId}/${yearsFolder}/${fileName}`;
+    
+    console.log('📁 New signature file structure:', { clientId, yearsFolder, fileName, filePath });
     
     const { data, error } = await supabase.storage
       .from('signatures')
-      .upload(fileName, signatureBlob, {
+      .upload(filePath, signatureBlob, {
         contentType: 'image/png',
         upsert: false
       });
@@ -197,7 +211,7 @@ export const SignaturePage: React.FC = () => {
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage
       .from('signatures')
-      .getPublicUrl(fileName);
+      .getPublicUrl(filePath);
 
     console.log('✅ Signature uploaded successfully:', publicUrl);
     return publicUrl;
@@ -325,11 +339,18 @@ export const SignaturePage: React.FC = () => {
       
       const contractBlob = await generateSignedContract(signatureDataURL);
       
-      // Upload contract to storage
-      const contractFileName = `contract-${recordId}-${Date.now()}.pdf`;
+      // Upload contract to storage with new structure
+      const clientId = recordId; // Using recordId as clientId (Salesforce Lead ID)
+      const yearsFolder = getYearsFolder();
+      const timestamp = Date.now();
+      const contractFileName = `contract_${recordId}_${timestamp}.pdf`;
+      const contractFilePath = `${clientId}/${yearsFolder}/${contractFileName}`;
+      
+      console.log('📁 New contract file structure:', { clientId, yearsFolder, contractFileName, contractFilePath });
+      
       const { data: contractData, error: contractError } = await supabase.storage
         .from('signatures')
-        .upload(contractFileName, contractBlob, {
+        .upload(contractFilePath, contractBlob, {
           contentType: 'application/pdf',
           upsert: false
         });
@@ -340,7 +361,7 @@ export const SignaturePage: React.FC = () => {
 
       const { data: { publicUrl: contractUrl } } = supabase.storage
         .from('signatures')
-        .getPublicUrl(contractFileName);
+        .getPublicUrl(contractFilePath);
 
       // Prefer direct lookup in bankCatalog by Document_Type__c, then fallback to registerDocuments
       const safeBankCatalog: any[] = Array.isArray(bankCatalog)

@@ -33,6 +33,57 @@ const getDocumentIcon = (name: string) => {
   return User;
 };
 
+// Helper function to get years folder (e.g., "2020-2024")
+const getYearsFolder = () => {
+  const currentYear = new Date().getFullYear();
+  const startYear = currentYear - 4; // 5 year range
+  return `${startYear}-${currentYear}`;
+};
+
+// Helper function to sanitize filetype from document name
+const sanitizeFiletype = (documentName: string) => {
+  // Hebrew to English translations for common document types
+  const hebrewToEnglish: Record<string, string> = {
+    'חתימה': 'signature',
+    'הסכם': 'contract',
+    'התקשרות': 'agreement',
+    'צילום': 'photo',
+    'תז': 'id',
+    'תעודת': 'certificate',
+    'זהות': 'identity',
+    'ספח': 'appendix',
+    'רישיון': 'license',
+    'נהיגה': 'driving',
+    'בנק': 'bank',
+    'חשבון': 'account',
+    'אישור': 'confirmation',
+    'יצוג': 'representation',
+    'מס': 'tax',
+    'הכנסה': 'income',
+    'ביטוח': 'insurance',
+    'לאומי': 'national',
+    'פנסיה': 'pension'
+  };
+
+  let result = documentName.toLowerCase();
+  
+  // Replace Hebrew words with English equivalents
+  Object.entries(hebrewToEnglish).forEach(([hebrew, english]) => {
+    result = result.replace(new RegExp(hebrew, 'g'), english);
+  });
+  
+  // Remove any remaining non-English characters and special characters
+  result = result
+    .replace(/[^a-z0-9\s]/g, '') // Keep only English letters, numbers, and spaces
+    .replace(/\s+/g, '_') // Replace spaces with underscores
+    .replace(/_+/g, '_') // Replace multiple underscores with single
+    .replace(/^_|_$/g, '') // Remove leading/trailing underscores
+    .trim();
+  
+  // Fallback to 'document' if result is empty
+  return result || 'document';
+};
+
 export const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
   const { clientData, isLoading, recordId, isDataFresh, identificationDocuments, refetchData } = useSalesforceData();
@@ -57,11 +108,23 @@ export const DocumentsPage: React.FC = () => {
   const uploadDocumentToStorage = async (file: File, bankId: string): Promise<string> => {
     console.log('🔄 Uploading document to Supabase storage...');
     
-    const fileName = `document-${bankId}-${recordId}-${Date.now()}.${file.name.split('.').pop()}`;
+    // Find document name for filetype
+    const document = documents.find(doc => doc.bankId === bankId);
+    const filetype = document ? sanitizeFiletype(document.name) : 'document';
+    
+    // Create new file structure: {clientId}/{yearsFolder}/{filetype}_{recordId}_{timestamp}.{ext}
+    const clientId = recordId; // Using recordId as clientId (Salesforce Lead ID)
+    const yearsFolder = getYearsFolder();
+    const timestamp = Date.now();
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${filetype}_${recordId}_${timestamp}.${fileExtension}`;
+    const filePath = `${clientId}/${yearsFolder}/${fileName}`;
+    
+    console.log('📁 New file structure:', { clientId, yearsFolder, fileName, filePath });
     
     const { data, error } = await supabase.storage
       .from('signatures')
-      .upload(fileName, file, {
+      .upload(filePath, file, {
         contentType: file.type,
         upsert: false
       });
@@ -74,7 +137,7 @@ export const DocumentsPage: React.FC = () => {
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage
       .from('signatures')
-      .getPublicUrl(fileName);
+      .getPublicUrl(filePath);
 
     console.log('✅ Document uploaded to storage:', publicUrl);
     return publicUrl;
