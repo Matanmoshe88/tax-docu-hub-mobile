@@ -35,8 +35,11 @@ const getDocumentIcon = (name: string) => {
 
 export const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { clientData, isLoading, recordId, isDataFresh, identificationDocuments } = useSalesforceData();
+  const { clientData, isLoading, recordId, isDataFresh, identificationDocuments, refetchData } = useSalesforceData();
   const { toast } = useToast();
+  
+  // Optimistic UI state - track uploads before Salesforce confirms
+  const [tempUploaded, setTempUploaded] = useState<Set<string>>(new Set());
   
   // Use documents from Salesforce data
   const documents = identificationDocuments || [];
@@ -44,9 +47,11 @@ export const DocumentsPage: React.FC = () => {
   // Documents are already loaded with their status from Salesforce
   console.log('📋 DocumentsPage identificationDocuments:', identificationDocuments);
 
-  // Check if all required documents are uploaded
+  // Check if all required documents are uploaded (including optimistic uploads)
   const requiredDocuments = documents.filter(doc => doc.isRequired);
-  const uploadedRequiredDocuments = requiredDocuments.filter(doc => doc.status === 'uploaded');
+  const uploadedRequiredDocuments = requiredDocuments.filter(doc => 
+    doc.status === 'uploaded' || tempUploaded.has(doc.bankId)
+  );
   const canFinish = requiredDocuments.length > 0 && uploadedRequiredDocuments.length === requiredDocuments.length;
 
   const uploadDocumentToStorage = async (file: File, bankId: string): Promise<string> => {
@@ -116,7 +121,38 @@ export const DocumentsPage: React.FC = () => {
 
       await sendDocumentToSalesforce(documentUrl, bankId);
 
-      // Note: Document state is managed by useSalesforceData hook and will be refreshed
+      // Optimistic UI - immediately show as uploaded
+      setTempUploaded(prev => new Set([...prev, bankId]));
+
+      // Background refresh with retries
+      const refreshWithRetry = async (attempts = 3) => {
+        for (let i = 0; i < attempts; i++) {
+          try {
+            await new Promise(resolve => setTimeout(resolve, 600)); // 600ms delay
+            await refetchData();
+            
+            // Check if the real data now shows this document as uploaded
+            const updatedDoc = identificationDocuments?.find(d => d.bankId === bankId);
+            if (updatedDoc?.status === 'uploaded') {
+              // Clear optimistic state since real data confirms upload
+              setTempUploaded(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(bankId);
+                return newSet;
+              });
+              break;
+            }
+          } catch (error) {
+            console.warn(`Refresh attempt ${i + 1} failed:`, error);
+            if (i === attempts - 1) {
+              console.error('All refresh attempts failed');
+            }
+          }
+        }
+      };
+      
+      // Start background refresh (don't await)
+      refreshWithRetry();
 
       toast({
         title: "הקובץ הועלה בהצלחה! 🎉",
@@ -317,9 +353,9 @@ export const DocumentsPage: React.FC = () => {
 
         {/* Documents List */}
         <div className="space-y-4">
-          {documents.map((doc) => {
+        {documents.map((doc) => {
             const DocumentIcon = getDocumentIcon(doc.name);
-            const isUploaded = doc.status === 'uploaded';
+            const isUploaded = doc.status === 'uploaded' || tempUploaded.has(doc.bankId);
             return (
             <Card 
               key={doc.bankId} 
