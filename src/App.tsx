@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HomePage } from "./pages/HomePage";
 import { ContractPage } from "./pages/ContractPage";
 import AuthPage from "./pages/AuthPage";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
 import { SignaturePage } from "./pages/SignaturePage";
 import { DocumentsPage } from "./pages/DocumentsPage";
 import { FinishPage } from "./pages/FinishPage";
@@ -22,6 +23,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/" element={<HomePage />} />
           <Route path="/:recordId" element={<HomePage />} />
           <Route path="/contract/:recordId" element={<ContractPage />} />
