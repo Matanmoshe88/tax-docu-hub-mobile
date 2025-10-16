@@ -12,7 +12,7 @@ import { generateContractPDFBlob } from '@/lib/pdfGenerator';
 
 export const SignaturePage: React.FC = () => {
   const navigate = useNavigate();
-  const { clientData, recordId, registerDocuments, bankCatalog } = useSalesforceData();
+  const { clientData, recordId } = useSalesforceData();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
@@ -40,62 +40,6 @@ export const SignaturePage: React.FC = () => {
       window.removeEventListener('popstate', handlePopState);
     };
   }, [toast]);
-
-  // On load: log which Bank IDs will be used for Signature and Agreement
-  useEffect(() => {
-    try {
-      const safeBankCatalog: any[] = Array.isArray(bankCatalog)
-        ? bankCatalog
-        : JSON.parse(sessionStorage.getItem('bankCatalog') || '[]');
-
-      console.log('🟦 [SignaturePage:init] recordId:', recordId);
-      console.log('🟦 [SignaturePage:init] bankCatalog size:', safeBankCatalog.length);
-
-      const signatureItem = safeBankCatalog.find((item: any) => item.Document_Type__c === 'Signature');
-      const agreementItem = safeBankCatalog.find((item: any) => item.Document_Type__c === 'Agreement');
-
-      if (signatureItem) {
-        console.log('🟩 [SignaturePage:init] Signature bank item', {
-          Id: signatureItem.Id,
-          Name: signatureItem.Name,
-          Category: signatureItem.Catagory__c,
-          Document_Type__c: signatureItem.Document_Type__c,
-        });
-      } else {
-        console.log('🟥 [SignaturePage:init] Signature bank item NOT FOUND in bankCatalog');
-      }
-
-      if (agreementItem) {
-        console.log('🟩 [SignaturePage:init] Agreement bank item', {
-          Id: agreementItem.Id,
-          Name: agreementItem.Name,
-          Category: agreementItem.Catagory__c,
-          Document_Type__c: agreementItem.Document_Type__c,
-        });
-      } else {
-        console.log('🟥 [SignaturePage:init] Agreement bank item NOT FOUND in bankCatalog');
-      }
-
-      const regSig = registerDocuments?.find(
-        (d) =>
-          d.documentType === 'Signature' ||
-          d.name.includes('חתימה') ||
-          d.name.toLowerCase().includes('signature')
-      );
-      const regAgr = registerDocuments?.find(
-        (d) =>
-          d.documentType === 'Agreement' ||
-          d.name.includes('הסכם') ||
-          d.name.toLowerCase().includes('contract') ||
-          d.name.includes('התקשרות')
-      );
-
-      console.log('🟨 [SignaturePage:init] RegisterDocuments Signature:', regSig);
-      console.log('🟨 [SignaturePage:init] RegisterDocuments Agreement:', regAgr);
-    } catch (e) {
-      console.log('⚠️ [SignaturePage:init] Logging error:', e);
-    }
-  }, [recordId, bankCatalog, registerDocuments]);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -177,28 +121,14 @@ export const SignaturePage: React.FC = () => {
     setHasSignature(false);
   };
 
-  // Helper function to get years folder (e.g., "2020-2024")
-  const getYearsFolder = () => {
-    const currentYear = new Date().getFullYear();
-    const startYear = currentYear - 4; // 5 year range
-    return `${startYear}-${currentYear}`;
-  };
-
   const uploadSignatureToStorage = async (signatureBlob: Blob): Promise<string> => {
     console.log('🔄 Uploading signature to Supabase storage...');
     
-    // Create new file structure: {clientRealId}/{yearsFolder}/{filetype}_{recordId}_{timestamp}.png
-    const clientRealId = clientData?.idNumber || recordId; // Use client's real ID number
-    const yearsFolder = getYearsFolder();
-    const timestamp = Date.now();
-    const fileName = `Signature_${recordId}_${timestamp}.png`;
-    const filePath = `${clientRealId}/${yearsFolder}/${fileName}`;
-    
-    console.log('📁 New signature file structure:', { clientRealId, yearsFolder, fileName, filePath });
+    const fileName = `signature-${recordId}-${Date.now()}.png`;
     
     const { data, error } = await supabase.storage
       .from('signatures')
-      .upload(filePath, signatureBlob, {
+      .upload(fileName, signatureBlob, {
         contentType: 'image/png',
         upsert: false
       });
@@ -211,20 +141,20 @@ export const SignaturePage: React.FC = () => {
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage
       .from('signatures')
-      .getPublicUrl(filePath);
+      .getPublicUrl(fileName);
 
     console.log('✅ Signature uploaded successfully:', publicUrl);
     return publicUrl;
   };
 
-  const callSalesforceIntegration = async (signatureUrl: string, documnetBankId: string, documentName?: string) => {
-    console.log('🔄 Calling Salesforce integration...', { documnetBankId, documentName });
+  const callSalesforceIntegration = async (signatureUrl: string, documentType?: string, documentName?: string) => {
+    console.log('🔄 Calling Salesforce integration...');
     
     const { data, error } = await supabase.functions.invoke('salesforce-integration', {
       body: {
         leadId: recordId,
         signatureUrl,
-        documnetBankId,
+        documentType,
         documentName
       }
     });
@@ -339,18 +269,11 @@ export const SignaturePage: React.FC = () => {
       
       const contractBlob = await generateSignedContract(signatureDataURL);
       
-      // Upload contract to storage with new structure
-      const clientRealId = clientData?.idNumber || recordId; // Use client's real ID number
-      const yearsFolder = getYearsFolder();
-      const timestamp = Date.now();
-      const contractFileName = `Agreement_${recordId}_${timestamp}.pdf`;
-      const contractFilePath = `${clientRealId}/${yearsFolder}/${contractFileName}`;
-      
-      console.log('📁 New contract file structure:', { clientRealId, yearsFolder, contractFileName, contractFilePath });
-      
+      // Upload contract to storage
+      const contractFileName = `contract-${recordId}-${Date.now()}.pdf`;
       const { data: contractData, error: contractError } = await supabase.storage
         .from('signatures')
-        .upload(contractFilePath, contractBlob, {
+        .upload(contractFileName, contractBlob, {
           contentType: 'application/pdf',
           upsert: false
         });
@@ -361,102 +284,20 @@ export const SignaturePage: React.FC = () => {
 
       const { data: { publicUrl: contractUrl } } = supabase.storage
         .from('signatures')
-        .getPublicUrl(contractFilePath);
+        .getPublicUrl(contractFileName);
 
-      // Prefer direct lookup in bankCatalog by Document_Type__c, then fallback to registerDocuments
-      const safeBankCatalog: any[] = Array.isArray(bankCatalog)
-        ? bankCatalog
-        : JSON.parse(sessionStorage.getItem('bankCatalog') || '[]');
+      // Send signature to Salesforce
+      toast({
+        title: "שולח ל-Salesforce...",
+        description: "מעביר את החתימה למערכת הניהול",
+      });
+      
+      const salesforceResult = await callSalesforceIntegration(signatureUrl, "חתימה", "חתימה");
+      console.log('✅ Signature uploaded to Salesforce:', salesforceResult);
 
-      console.log('🏦 Full bank catalog (safe):', safeBankCatalog);
-      console.log('📋 Register documents length:', registerDocuments?.length);
-
-      const signatureBankItem = safeBankCatalog.find((item: any) => item.Document_Type__c === 'Signature');
-      const agreementBankItem = safeBankCatalog.find((item: any) => item.Document_Type__c === 'Agreement');
-
-      let signatureDoc = signatureBankItem
-        ? {
-            bankId: signatureBankItem.Id,
-            name: signatureBankItem.Name,
-            documentType: signatureBankItem.Document_Type__c,
-            category: signatureBankItem.Catagory__c,
-            displayOrder: signatureBankItem.Display_Order__c || 0,
-            isRequired: signatureBankItem.Is_Required__c || false,
-            status: 'not_uploaded' as const,
-          }
-        : registerDocuments?.find((doc) =>
-            doc.documentType === 'Signature' ||
-            doc.name.includes('חתימה') ||
-            doc.name.toLowerCase().includes('signature')
-          );
-
-      let contractDoc = agreementBankItem
-        ? {
-            bankId: agreementBankItem.Id,
-            name: agreementBankItem.Name,
-            documentType: agreementBankItem.Document_Type__c,
-            category: agreementBankItem.Catagory__c,
-            displayOrder: agreementBankItem.Display_Order__c || 0,
-            isRequired: agreementBankItem.Is_Required__c || false,
-            status: 'not_uploaded' as const,
-          }
-        : registerDocuments?.find((doc) =>
-            doc.documentType === 'Agreement' ||
-            doc.name.includes('הסכם') ||
-            doc.name.toLowerCase().includes('contract') ||
-            doc.name.includes('התקשרות')
-          );
-
-      console.log('✍️ Final signature doc:', signatureDoc);
-      console.log('📄 Final contract doc:', contractDoc);
-
-      // Send signature to Salesforce (only if we have a matching document type)
-      if (signatureDoc) {
-        toast({
-          title: "שולח חתימה ל-Salesforce...",
-          description: `מעביר את החתימה למערכת הניהול (Bank ID: ${signatureDoc.bankId})`,
-        });
-        
-        console.log('🔄 Upserting signature with bankId:', signatureDoc.bankId);
-        const salesforceResult = await callSalesforceIntegration(signatureUrl, signatureDoc.bankId, "חתימה");
-        console.log('✅ Signature uploaded to Salesforce:', salesforceResult);
-        
-        toast({
-          title: "חתימה נשלחה בהצלחה!",
-          description: "החתימה עודכנה במערכת הניהול",
-        });
-      } else {
-        console.log('⚠️ No signature document type found in register documents');
-        toast({
-          title: "שגיאה",
-          description: "לא נמצא סוג מסמך חתימה ברשימת המסמכים",
-          variant: "destructive",
-        });
-      }
-
-      // Send contract to Salesforce (only if we have a matching document type) - Sequential after signature
-      if (contractDoc) {
-        toast({
-          title: "שולח הסכם ל-Salesforce...",
-          description: `מעביר את ההסכם למערכת הניהול (Bank ID: ${contractDoc.bankId})`,
-        });
-        
-        console.log('🔄 Upserting contract with bankId:', contractDoc.bankId);
-        const contractResult = await callSalesforceIntegration(contractUrl, contractDoc.bankId, "הסכם התקשרות");
-        console.log('✅ Contract uploaded to Salesforce:', contractResult);
-        
-        toast({
-          title: "הסכם נשלח בהצלחה!",
-          description: "ההסכם עודכן במערכת הניהול",
-        });
-      } else {
-        console.log('⚠️ No contract document type found in register documents');
-        toast({
-          title: "שגיאה",
-          description: "לא נמצא סוג מסמך הסכם ברשימת המסמכים",
-          variant: "destructive",
-        });
-      }
+      // Send contract to Salesforce
+      const contractResult = await callSalesforceIntegration(contractUrl, "הסכם התקשרות", "הסכם התקשרות");
+      console.log('✅ Contract uploaded to Salesforce:', contractResult);
       
       setIsSigned(true);
       toast({

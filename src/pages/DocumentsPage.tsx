@@ -12,10 +12,7 @@ import {
   Lock,
   Unlock,
   Eye,
-  Download,
-  User,
-  Building,
-  Briefcase
+  Download
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { createAndDownloadPDF } from '@/lib/pdfGenerator';
@@ -23,64 +20,154 @@ import { processFileForUpload } from '@/lib/imageCompression';
 import { supabase } from '@/integrations/supabase/client';
 import { useSalesforceData } from '@/hooks/useSalesforceData';
 
-// Helper function to get icon for document
-const getDocumentIcon = (name: string) => {
-  const lowercaseName = name.toLowerCase();
-  if (lowercaseName.includes('זהות') || lowercaseName.includes('תז')) return CreditCard;
-  if (lowercaseName.includes('רישיון') || lowercaseName.includes('נהיגה')) return Car;
-  if (lowercaseName.includes('בנק') || lowercaseName.includes('חשבון')) return Building;
-  if (lowercaseName.includes('ספח')) return FileText;
-  return User;
-};
+interface Document {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  required: boolean;
+  uploaded: boolean;
+  locked: boolean;
+  file?: File;
+  alternative?: string;
+  salesforceType: string;
+  salesforceName: string;
+}
 
-// Helper function to get years folder (e.g., "2020-2024")
-const getYearsFolder = () => {
-  const currentYear = new Date().getFullYear();
-  const startYear = currentYear - 4; // 5 year range
-  return `${startYear}-${currentYear}`;
-};
+interface DocumentsSingle {
+  Id: string;
+  DocumentType__c: string;
+  Status__c: string;
+  doc_url__c: string;
+  CreatedDate: string;
+}
 
 export const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { clientData, isLoading, recordId, isDataFresh, identificationDocuments, refetchData, bankCatalog } = useSalesforceData();
+  const { clientData, isLoading, recordId, isDataFresh } = useSalesforceData();
   const { toast } = useToast();
   
-  // Optimistic UI state - track uploads before Salesforce confirms
-  const [tempUploaded, setTempUploaded] = useState<Set<string>>(new Set());
-  
-  // Use documents from Salesforce data
-  const documents = identificationDocuments || [];
+  const [documents, setDocuments] = useState<Document[]>([
+    {
+      id: 'id-card',
+      title: 'תעודת זהות',
+      description: 'צילום ברור של תעודת הזהות',
+      icon: CreditCard,
+      required: true,
+      uploaded: false,
+      locked: false,
+      alternative: 'driver-license',
+      salesforceType: 'צילום תז קדימה',
+      salesforceName: 'תעודת זהות'
+    },
+    {
+      id: 'driver-license',
+      title: 'רישיון נהיגה',
+      description: 'צילום רישיון נהיגה תקף',
+      icon: Car,
+      required: true,
+      uploaded: false,
+      locked: false,
+      alternative: 'id-card',
+      salesforceType: 'צילום רישיון נהיגה',
+      salesforceName: 'רישיון נהיגה'
+    },
+    {
+      id: 'id-supplement',
+      title: 'ספח תז',
+      description: 'ספח תעודת הזהות (אם יש)',
+      icon: FileText,
+      required: false,
+      uploaded: false,
+      locked: false,
+      salesforceType: 'ספח תז',
+      salesforceName: 'ספח'
+    },
+    {
+      id: 'bank-statement',
+      title: 'אישור ניהול חשבון בנק',
+      description: 'אישור מהבנק על ניהול חשבון עדכני',
+      icon: FileText,
+      required: true,
+      uploaded: false,
+      locked: false,
+      salesforceType: 'אישור ניהול חשבון',
+      salesforceName: 'אישור ניהול חשבון'
+    }
+  ]);
 
-  // Documents are already loaded with their status from Salesforce
-  console.log('📋 DocumentsPage identificationDocuments:', identificationDocuments);
+  // Load document status from session storage when data changes
+  useEffect(() => {
+    console.log('📋 DocumentsPage recordId from useSalesforceData:', recordId);
+    console.log('📋 Current URL recordId should be: 00QWn000002zxExMAI');
+    
+    const documentsStatus = sessionStorage.getItem('documentsStatus');
+    console.log('📋 Raw documentsStatus from session:', documentsStatus);
+    
+    if (documentsStatus) {
+      try {
+        const salesforceDocuments: DocumentsSingle[] = JSON.parse(documentsStatus);
+        console.log('📄 Loading document status from Salesforce:', salesforceDocuments);
+        console.log('📝 Local document types:', documents.map(d => ({ id: d.id, salesforceType: d.salesforceType })));
+        
+        // Update document status based on Salesforce data
+        setDocuments(prev => prev.map(doc => {
+          console.log(`🔍 Checking document ${doc.id} (${doc.salesforceType})`);
+          
+          // Find the latest document of this type from Salesforce
+          const salesforceDocs = salesforceDocuments
+            .filter(sf => {
+              console.log(`  Comparing SF doc type "${sf.DocumentType__c}" with local type "${doc.salesforceType}"`);
+              return sf.DocumentType__c === doc.salesforceType;
+            })
+            .sort((a, b) => new Date(b.CreatedDate).getTime() - new Date(a.CreatedDate).getTime());
+          
+          console.log(`  Found ${salesforceDocs.length} matching documents for ${doc.id}`);
+          
+          const latestDoc = salesforceDocs[0];
+          
+          if (latestDoc) {
+            console.log(`  Latest doc for ${doc.id}:`, latestDoc);
+            // Consider document uploaded if status is completed OR if it has a doc_url (indicating it was uploaded)
+            if (latestDoc.Status__c === 'completed' || (latestDoc.doc_url__c && latestDoc.doc_url__c !== null)) {
+              console.log(`  ✅ Marking ${doc.id} as uploaded and locked (Status: ${latestDoc.Status__c}, URL: ${latestDoc.doc_url__c})`);
+              return {
+                ...doc,
+                uploaded: true,
+                locked: true
+              };
+            }
+          }
+          
+          console.log(`  ❌ No completed document found for ${doc.id}`);
+          return doc;
+        }));
+      } catch (error) {
+        console.error('Error parsing documents status:', error);
+      }
+    } else {
+      console.log('📄 No documentsStatus found in session storage');
+    }
+  }, [recordId, isDataFresh]); // Re-run when recordId or fresh data changes
 
-  // Check if all required documents are uploaded (including optimistic uploads)
-  const requiredDocuments = documents.filter(doc => doc.isRequired);
-  const uploadedRequiredDocuments = requiredDocuments.filter(doc => 
-    doc.status === 'uploaded' || tempUploaded.has(doc.bankId)
+  const hasIdentityDocument = documents.some(doc => 
+    (doc.id === 'id-card' || doc.id === 'driver-license') && doc.uploaded
   );
-  const canFinish = requiredDocuments.length > 0 && uploadedRequiredDocuments.length === requiredDocuments.length;
+  
+  const hasBankStatement = documents.some(doc => 
+    doc.id === 'bank-statement' && doc.uploaded
+  );
+  
+  const canFinish = hasIdentityDocument && hasBankStatement;
 
-  const uploadDocumentToStorage = async (file: File, bankId: string): Promise<string> => {
+  const uploadDocumentToStorage = async (file: File, docId: string): Promise<string> => {
     console.log('🔄 Uploading document to Supabase storage...');
     
-    // Find document from bank catalog for Document_Type__c
-    const bankDocument = bankCatalog?.find(item => item.Id === bankId);
-    const filetype = bankDocument?.Document_Type__c || 'document';
-    
-    // Create new file structure: {clientRealId}/{yearsFolder}/{filetype}_{recordId}_{timestamp}.{ext}
-    const clientRealId = clientData?.idNumber || recordId; // Use client's real ID number
-    const yearsFolder = getYearsFolder();
-    const timestamp = Date.now();
-    const fileExtension = file.name.split('.').pop();
-    const fileName = `${filetype}_${recordId}_${timestamp}.${fileExtension}`;
-    const filePath = `${clientRealId}/${yearsFolder}/${fileName}`;
-    
-    console.log('📁 New file structure:', { clientRealId, yearsFolder, fileName, filePath });
+    const fileName = `document-${docId}-${recordId}-${Date.now()}.${file.name.split('.').pop()}`;
     
     const { data, error } = await supabase.storage
       .from('signatures')
-      .upload(filePath, file, {
+      .upload(fileName, file, {
         contentType: file.type,
         upsert: false
       });
@@ -93,20 +180,21 @@ export const DocumentsPage: React.FC = () => {
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage
       .from('signatures')
-      .getPublicUrl(filePath);
+      .getPublicUrl(fileName);
 
     console.log('✅ Document uploaded to storage:', publicUrl);
     return publicUrl;
   };
 
-  const sendDocumentToSalesforce = async (documentUrl: string, bankId: string) => {
+  const sendDocumentToSalesforce = async (documentUrl: string, documentType: string, documentName: string) => {
     console.log('🔄 Sending document to Salesforce...');
     
     const { data, error } = await supabase.functions.invoke('salesforce-integration', {
       body: {
         leadId: recordId,
         signatureUrl: documentUrl,
-        documnetBankId: bankId
+        documentType,
+        documentName
       }
     });
 
@@ -119,8 +207,8 @@ export const DocumentsPage: React.FC = () => {
     return data;
   };
 
-  const handleFileUpload = async (bankId: string, file: File) => {
-    const document = documents.find(doc => doc.bankId === bankId);
+  const handleFileUpload = async (docId: string, file: File) => {
+    const document = documents.find(doc => doc.id === docId);
     if (!document) return;
 
     try {
@@ -130,7 +218,7 @@ export const DocumentsPage: React.FC = () => {
       });
 
       // Upload to storage
-      const documentUrl = await uploadDocumentToStorage(file, bankId);
+      const documentUrl = await uploadDocumentToStorage(file, docId);
 
       // Send to Salesforce
       toast({
@@ -138,44 +226,18 @@ export const DocumentsPage: React.FC = () => {
         description: "מעביר את הקובץ למערכת הניהול",
       });
 
-      await sendDocumentToSalesforce(documentUrl, bankId);
+      await sendDocumentToSalesforce(documentUrl, document.salesforceType, document.salesforceName);
 
-      // Optimistic UI - immediately show as uploaded
-      setTempUploaded(prev => new Set([...prev, bankId]));
-
-      // Background refresh with retries
-      const refreshWithRetry = async (attempts = 3) => {
-        for (let i = 0; i < attempts; i++) {
-          try {
-            await new Promise(resolve => setTimeout(resolve, 600)); // 600ms delay
-            await refetchData();
-            
-            // Check if the real data now shows this document as uploaded
-            const updatedDoc = identificationDocuments?.find(d => d.bankId === bankId);
-            if (updatedDoc?.status === 'uploaded') {
-              // Clear optimistic state since real data confirms upload
-              setTempUploaded(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(bankId);
-                return newSet;
-              });
-              break;
-            }
-          } catch (error) {
-            console.warn(`Refresh attempt ${i + 1} failed:`, error);
-            if (i === attempts - 1) {
-              console.error('All refresh attempts failed');
-            }
-          }
-        }
-      };
-      
-      // Start background refresh (don't await)
-      refreshWithRetry();
+      // Update local state
+      setDocuments(prev => prev.map(doc => 
+        doc.id === docId 
+          ? { ...doc, file, uploaded: true, locked: true }
+          : doc
+      ));
 
       toast({
         title: "הקובץ הועלה בהצלחה! 🎉",
-        description: `${document.name} נשמר במערכת ונשלח ל-Salesforce`,
+        description: `${document.title} נשמר במערכת ונשלח ל-Salesforce`,
       });
 
     } catch (error) {
@@ -189,7 +251,7 @@ export const DocumentsPage: React.FC = () => {
     }
   };
 
-  const handleFileInputChange = async (bankId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInputChange = async (docId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -228,7 +290,7 @@ export const DocumentsPage: React.FC = () => {
       
       console.log(`File processing complete: ${file.name} (${file.size} bytes) -> ${processedFile.name} (${processedFile.size} bytes)`);
 
-      await handleFileUpload(bankId, processedFile);
+      await handleFileUpload(docId, processedFile);
 
     } catch (error) {
       console.error('💥 File processing error:', error);
@@ -241,36 +303,40 @@ export const DocumentsPage: React.FC = () => {
     }
   };
 
-  const unlockDocument = (bankId: string) => {
-    // Note: In the new system, documents are managed by Salesforce
-    // This would require a Salesforce call to unlock/update the document
-    console.log(`🔓 Unlock requested for document: ${bankId}`);
-    toast({
-      title: "פונקציה זמינה בקרוב",
-      description: "אפשרות העריכה תהיה זמינה בקרוב",
-    });
+  const unlockDocument = (docId: string) => {
+    setDocuments(prev => prev.map(doc => 
+      doc.id === docId 
+        ? { ...doc, locked: false }
+        : doc
+    ));
   };
 
-  const removeDocument = (bankId: string) => {
-    // Note: In the new system, documents are managed by Salesforce
-    // This would require a Salesforce call to remove the document
-    console.log(`🗑️ Remove requested for document: ${bankId}`);
-    toast({
-      title: "פונקציה זמינה בקרוב", 
-      description: "אפשרות המחיקה תהיה זמינה בקרוב",
-    });
+  const removeDocument = (docId: string) => {
+    setDocuments(prev => prev.map(doc => 
+      doc.id === docId 
+        ? { ...doc, uploaded: false, file: undefined, locked: false }
+        : doc
+    ));
   };
 
-  const getRequirementText = (doc: any) => {
-    return doc.isRequired ? 'נדרש' : 'רשות';
+  const getRequirementText = (doc: Document) => {
+    if (doc.required) {
+      if (doc.alternative) {
+        const altDoc = documents.find(d => d.id === doc.alternative);
+        if (altDoc?.uploaded) {
+          return 'רשות'; // Alternative uploaded, this becomes optional
+        }
+      }
+      return 'נדרש';
+    }
+    return 'רשות';
   };
 
   const handleNext = () => {
     if (!canFinish) {
-      const missingDocs = requiredDocuments.filter(doc => doc.status !== 'uploaded');
       toast({
         title: "חסרים מסמכים נדרשים",
-        description: `אנא העלה: ${missingDocs.map(doc => doc.name).join(', ')}`,
+        description: "אנא העלה תעודת זהות או רישיון נהיגה + אישור ניהול חשבון",
         variant: "destructive",
       });
       return;
@@ -372,28 +438,25 @@ export const DocumentsPage: React.FC = () => {
 
         {/* Documents List */}
         <div className="space-y-4">
-        {documents.map((doc) => {
-            const DocumentIcon = getDocumentIcon(doc.name);
-            const isUploaded = doc.status === 'uploaded' || tempUploaded.has(doc.bankId);
-            return (
+          {documents.map((doc) => (
             <Card 
-              key={doc.bankId} 
+              key={doc.id} 
               className={`shadow-card hover:shadow-lg transition-all relative ${
-                isUploaded ? 'ring-2 ring-success/20 bg-success/5' : ''
+                doc.uploaded && doc.locked ? 'ring-2 ring-success/20 bg-success/5' : ''
               }`}
             >
-              {isUploaded && (
+              {doc.uploaded && doc.locked && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg z-10 flex items-center justify-center">
                   <div className="text-center space-y-2">
                     <div className="flex justify-center">
                       <Lock className="h-8 w-8 text-success" />
                     </div>
-                    <h3 className="font-semibold text-lg">{doc.name}</h3>
+                    <h3 className="font-semibold text-lg">{doc.title}</h3>
                     <p className="text-sm text-muted-foreground">הקובץ הועלה בהצלחה</p>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => unlockDocument(doc.bankId)}
+                      onClick={() => unlockDocument(doc.id)}
                       className="mt-2"
                     >
                       <Unlock className="h-4 w-4 mr-2" />
@@ -406,44 +469,44 @@ export const DocumentsPage: React.FC = () => {
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 rounded-lg bg-primary/10 text-primary">
-                    <DocumentIcon className="h-6 w-6" />
+                    <doc.icon className="h-6 w-6" />
                   </div>
                   
                   <div className="flex-1 space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-lg">{doc.name}</h3>
+                          <h3 className="font-semibold text-lg">{doc.title}</h3>
                         </div>
-                        <p className="text-muted-foreground text-sm mt-1">מסמך נדרש לתהליך</p>
+                        <p className="text-muted-foreground text-sm mt-1">{doc.description}</p>
                         <div className="text-xs text-muted-foreground mt-2">
                           {getRequirementText(doc)}
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        {isUploaded && (
-                          <Badge variant="default" className="text-xs">הועלה</Badge>
+                        {doc.uploaded && !doc.locked && (
+                          <Badge variant="success" className="text-xs">הועלה</Badge>
                         )}
                       </div>
                     </div>
 
-                    {!isUploaded && (
+                    {(!doc.uploaded || !doc.locked) && (
                       <div>
                         <input
                           type="file"
-                          id={`file-${doc.bankId}`}
+                          id={`file-${doc.id}`}
                           className="hidden"
                           accept=".pdf,.jpg,.jpeg,.png"
-                          onChange={(e) => handleFileInputChange(doc.bankId, e)}
+                          onChange={(e) => handleFileInputChange(doc.id, e)}
                         />
-                        <Button 
-                          onClick={() => document.getElementById(`file-${doc.bankId}`)?.click()}
-                          className="w-full"
+                        <Button
                           variant="outline"
+                          className="w-full sm:w-auto"
+                          onClick={() => document.getElementById(`file-${doc.id}`)?.click()}
                         >
                           <Upload className="h-4 w-4 mr-2" />
-                          העלה {doc.name}
+                          {doc.uploaded ? 'החלף קובץ' : 'העלה קובץ'}
                         </Button>
                       </div>
                     )}
@@ -451,8 +514,7 @@ export const DocumentsPage: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-            );
-          })}
+          ))}
         </div>
 
         {/* Upload Guidelines */}
