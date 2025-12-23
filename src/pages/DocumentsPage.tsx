@@ -57,7 +57,7 @@ export const DocumentsPage: React.FC = () => {
       uploaded: false,
       locked: false,
       alternative: 'driver-license',
-      salesforceType: 'צילום תז קדימה',
+      salesforceType: 'IDFront',
       salesforceName: 'תעודת זהות'
     },
     {
@@ -69,7 +69,7 @@ export const DocumentsPage: React.FC = () => {
       uploaded: false,
       locked: false,
       alternative: 'id-card',
-      salesforceType: 'צילום רישיון נהיגה',
+      salesforceType: 'DriversLicense',
       salesforceName: 'רישיון נהיגה'
     },
     {
@@ -80,7 +80,7 @@ export const DocumentsPage: React.FC = () => {
       required: false,
       uploaded: false,
       locked: false,
-      salesforceType: 'ספח תז',
+      salesforceType: 'IDCardSlip',
       salesforceName: 'ספח'
     },
     {
@@ -91,10 +91,33 @@ export const DocumentsPage: React.FC = () => {
       required: true,
       uploaded: false,
       locked: false,
-      salesforceType: 'אישור ניהול חשבון',
+      salesforceType: 'BanksSatement',
       salesforceName: 'אישור ניהול חשבון'
     }
   ]);
+
+  // Helper function to get DocumnetBank ID by document type
+  const getDocumnetBankId = (documentType: string): string | undefined => {
+    const bankCatalogStr = sessionStorage.getItem('bankCatalog');
+    if (!bankCatalogStr) {
+      console.warn('⚠️ Bank catalog not found in session storage');
+      return undefined;
+    }
+    
+    try {
+      const bankCatalog = JSON.parse(bankCatalogStr);
+      const record = bankCatalog.find((item: any) => item.Document_Type__c === documentType);
+      if (record) {
+        console.log(`✅ Found DocumnetBank ID for ${documentType}:`, record.Id);
+        return record.Id;
+      }
+      console.warn(`⚠️ DocumnetBank record not found for type: ${documentType}`);
+      return undefined;
+    } catch (error) {
+      console.error('❌ Error parsing bank catalog:', error);
+      return undefined;
+    }
+  };
 
   // Load document status from session storage when data changes
   useEffect(() => {
@@ -186,14 +209,14 @@ export const DocumentsPage: React.FC = () => {
     return publicUrl;
   };
 
-  const sendDocumentToSalesforce = async (documentUrl: string, documentType: string, documentName: string) => {
+  const sendDocumentToSalesforce = async (documentUrl: string, documnetBankId: string, documentName: string) => {
     console.log('🔄 Sending document to Salesforce...');
     
     const { data, error } = await supabase.functions.invoke('salesforce-integration', {
       body: {
         leadId: recordId,
         signatureUrl: documentUrl,
-        documentType,
+        documnetBankId,
         documentName
       }
     });
@@ -220,13 +243,18 @@ export const DocumentsPage: React.FC = () => {
       // Upload to storage
       const documentUrl = await uploadDocumentToStorage(file, docId);
 
-      // Send to Salesforce
+      // Send to Salesforce - get the actual DocumnetBank ID from the catalog
+      const documnetBankId = getDocumnetBankId(document.salesforceType);
+      if (!documnetBankId) {
+        throw new Error(`Could not find DocumnetBank ID for type: ${document.salesforceType}`);
+      }
+      
       toast({
         title: "שולח ל-Salesforce...",
         description: "מעביר את הקובץ למערכת הניהול",
       });
 
-      await sendDocumentToSalesforce(documentUrl, document.salesforceType, document.salesforceName);
+      await sendDocumentToSalesforce(documentUrl, documnetBankId, document.salesforceName);
 
       // Update local state
       setDocuments(prev => prev.map(doc => 

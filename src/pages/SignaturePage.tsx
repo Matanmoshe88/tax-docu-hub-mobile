@@ -21,6 +21,29 @@ export const SignaturePage: React.FC = () => {
   const [showLoading, setShowLoading] = useState(false);
   const { toast } = useToast();
 
+  // Helper function to get DocumnetBank ID by document type
+  const getDocumnetBankId = (documentType: string): string | undefined => {
+    const bankCatalogStr = sessionStorage.getItem('bankCatalog');
+    if (!bankCatalogStr) {
+      console.warn('⚠️ Bank catalog not found in session storage');
+      return undefined;
+    }
+    
+    try {
+      const bankCatalog = JSON.parse(bankCatalogStr);
+      const record = bankCatalog.find((item: any) => item.Document_Type__c === documentType);
+      if (record) {
+        console.log(`✅ Found DocumnetBank ID for ${documentType}:`, record.Id);
+        return record.Id;
+      }
+      console.warn(`⚠️ DocumnetBank record not found for type: ${documentType}`);
+      return undefined;
+    } catch (error) {
+      console.error('❌ Error parsing bank catalog:', error);
+      return undefined;
+    }
+  };
+
   // Disable browser back button completely
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
@@ -147,14 +170,14 @@ export const SignaturePage: React.FC = () => {
     return publicUrl;
   };
 
-  const callSalesforceIntegration = async (signatureUrl: string, documentType?: string, documentName?: string) => {
+  const callSalesforceIntegration = async (signatureUrl: string, documnetBankId?: string, documentName?: string) => {
     console.log('🔄 Calling Salesforce integration...');
     
     const { data, error } = await supabase.functions.invoke('salesforce-integration', {
       body: {
         leadId: recordId,
         signatureUrl,
-        documentType,
+        documnetBankId,
         documentName
       }
     });
@@ -292,11 +315,19 @@ export const SignaturePage: React.FC = () => {
         description: "מעביר את החתימה למערכת הניהול",
       });
       
-      const salesforceResult = await callSalesforceIntegration(signatureUrl, "חתימה", "חתימה");
+      // Get the actual DocumnetBank IDs from the catalog
+      const signatureBankId = getDocumnetBankId('Signature');
+      const agreementBankId = getDocumnetBankId('Agreement');
+      
+      if (!signatureBankId || !agreementBankId) {
+        throw new Error('Could not find DocumnetBank IDs for Signature or Agreement');
+      }
+      
+      const salesforceResult = await callSalesforceIntegration(signatureUrl, signatureBankId, "חתימה");
       console.log('✅ Signature uploaded to Salesforce:', salesforceResult);
 
       // Send contract to Salesforce
-      const contractResult = await callSalesforceIntegration(contractUrl, "הסכם התקשרות", "הסכם התקשרות");
+      const contractResult = await callSalesforceIntegration(contractUrl, agreementBankId, "הסכם התקשרות");
       console.log('✅ Contract uploaded to Salesforce:', contractResult);
       
       setIsSigned(true);
