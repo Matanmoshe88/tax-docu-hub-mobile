@@ -16,45 +16,35 @@ export const ContractPage: React.FC = () => {
   // Check if contract is already completed and navigate to documents if so
   useEffect(() => {
     if (!isLoading && recordId) {
-      const documentsStatus = sessionStorage.getItem('documentsStatus');
+      const existingDocsStr = sessionStorage.getItem('existingDocs');
       
       console.log('🔍 Checking contract status on ContractPage...');
-      console.log('📋 documentsStatus from session:', documentsStatus);
+      console.log('📋 existingDocs from session:', existingDocsStr);
       
-      if (documentsStatus) {
+      if (existingDocsStr) {
         try {
-          const documents = JSON.parse(documentsStatus);
-          console.log('📄 All documents:', documents);
+          const existingDocs = JSON.parse(existingDocsStr);
+          console.log('📄 All existing docs:', existingDocs);
           
-          // Find the contract document (הסכם התקשרות)
-          const contractDocs = documents.filter((doc: any) => doc.DocumentType__c === 'הסכם התקשרות');
-          console.log('📝 Contract documents found:', contractDocs);
+          // Find signed agreement: DocType__c === 'Agreement' and Status__c === 'Collected'
+          const signedAgreement = existingDocs.find((doc: any) => 
+            doc.DocType__c === 'Agreement' && doc.Status__c === 'Collected'
+          );
           
-          if (contractDocs.length > 0) {
-            // Get the latest contract document
-            const latestContract = contractDocs.reduce((latest: any, current: any) => 
-              new Date(current.CreatedDate) > new Date(latest.CreatedDate) ? current : latest
-            );
-            
-            console.log('📋 Latest contract document:', latestContract);
-            console.log(`📋 Status: ${latestContract.Status__c}, URL: ${latestContract.doc_url__c}`);
-            
-            // Check if contract is completed or has a URL (indicating it was signed)
-            if (latestContract.Status__c === 'completed' || (latestContract.doc_url__c && latestContract.doc_url__c !== null)) {
-              console.log('✅ Contract already completed, redirecting to documents page');
-              navigate(`/documents/${recordId}`, { replace: true });
-              return;
-            } else {
-              console.log('❌ Contract not completed yet');
-            }
+          console.log('📝 Signed agreement found:', signedAgreement);
+          
+          if (signedAgreement) {
+            console.log('✅ Contract already signed, redirecting to documents page');
+            navigate(`/documents/${recordId}`, { replace: true });
+            return;
           } else {
-            console.log('❌ No contract documents found');
+            console.log('❌ No signed agreement found - showing contract page');
           }
         } catch (error) {
           console.error('Error checking contract status:', error);
         }
       } else {
-        console.log('❌ No documentsStatus found in sessionStorage');
+        console.log('❌ No existingDocs found in sessionStorage');
       }
     }
   }, [isLoading, recordId, navigate]);
