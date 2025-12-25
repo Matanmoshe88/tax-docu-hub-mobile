@@ -79,14 +79,16 @@ serve(async (req) => {
     const smsResponse = await fetch('https://capi.inforu.co.il/api/v2/SMS/SendSms', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
         'Authorization': `Basic ${inforuToken}`,
       },
       body: JSON.stringify({
-        Message: `קוד האימות שלך ל-QuickTax: ${code}`,
-        Recipients: [{ Phone: smsPhone }],
-        Settings: {
-          SenderName: 'QuickTax',
+        Data: {
+          Message: `קוד האימות שלך ל-QuickTax: ${code}`,
+          Recipients: [{ Phone: smsPhone }],
+          Settings: {
+            Sender: 'QuickTax',
+          },
         },
       }),
     });
