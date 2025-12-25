@@ -89,7 +89,7 @@ serve(async (req) => {
 
     const requestBody = {
       Data: {
-        Message: `קוד האימות שלך ל-QuickTax: ${code}`,
+        Message: `קוד האימות שלך ל-QuickTax: ${code}\n\n@f49b4a9c-f50f-4d15-9787-49a9b3136acb.lovableproject.com #${code}`,
         Recipients: [{ Phone: smsPhone }],
         Settings: {
           Sender: 'Quicktax',
