@@ -73,8 +73,28 @@ serve(async (req) => {
       );
     }
 
-    // Format phone for InforUMobile (remove + prefix)
-    const smsPhone = normalizedPhone.replace('+', '');
+    // Use local phone format (e.g., 0525351135) - same as Postman
+    let smsPhone = phone.replace(/[\s\-()]/g, '');
+    if (smsPhone.startsWith('+972')) {
+      smsPhone = '0' + smsPhone.substring(4);
+    } else if (smsPhone.startsWith('972')) {
+      smsPhone = '0' + smsPhone.substring(3);
+    }
+
+    console.log('SMS Phone (local format):', smsPhone);
+    console.log('Token first 10 chars:', inforuToken.substring(0, 10));
+
+    const requestBody = {
+      Data: {
+        Message: `קוד האימות שלך ל-QuickTax: ${code}`,
+        Recipients: [{ Phone: smsPhone }],
+        Settings: {
+          Sender: 'MyBrand',
+        },
+      },
+    };
+
+    console.log('Request body:', JSON.stringify(requestBody));
 
     const smsResponse = await fetch('https://capi.inforu.co.il/api/v2/SMS/SendSms', {
       method: 'POST',
@@ -82,15 +102,7 @@ serve(async (req) => {
         'Content-Type': 'application/json; charset=utf-8',
         'Authorization': `Basic ${inforuToken}`,
       },
-      body: JSON.stringify({
-        Data: {
-          Message: `קוד האימות שלך ל-QuickTax: ${code}`,
-          Recipients: [{ Phone: smsPhone }],
-          Settings: {
-            Sender: 'QuickTax',
-          },
-        },
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     const smsResult = await smsResponse.json();
