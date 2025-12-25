@@ -92,7 +92,7 @@ serve(async (req) => {
         Message: `קוד האימות שלך ל-QuickTax: ${code}`,
         Recipients: [{ Phone: smsPhone }],
         Settings: {
-          Sender: 'קוויק טקס',
+          Sender: 'MyBrand',
         },
       },
     };
