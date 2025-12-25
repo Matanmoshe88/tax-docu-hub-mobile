@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, ArrowRight } from 'lucide-react';
-import QuickTaxLogo from '@/components/QuickTaxLogo';
+import quicktaxLogo from '@/assets/quicktax-logo-new.png';
 
 export default function AuthPage() {
   const [phone, setPhone] = useState('');
@@ -155,7 +155,11 @@ export default function AuthPage() {
       <div className="w-full max-w-sm space-y-8">
         {/* Logo */}
         <div className="flex justify-center">
-          <QuickTaxLogo size="lg" />
+          <img 
+            src={quicktaxLogo} 
+            alt="QuickTax Logo" 
+            className="h-24 object-contain"
+          />
         </div>
 
         {step === 'phone' ? (
