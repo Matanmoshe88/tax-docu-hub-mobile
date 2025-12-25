@@ -31,6 +31,39 @@ export default function AuthPage() {
     }
   }, [countdown]);
 
+  // Web OTP API for auto-fill
+  useEffect(() => {
+    if (step !== 'otp') return;
+    
+    const abortController = new AbortController();
+    
+    const getOTP = async () => {
+      if ('OTPCredential' in window) {
+        try {
+          const content = await navigator.credentials.get({
+            // @ts-ignore - OTP is not in the types yet
+            otp: { transport: ['sms'] },
+            signal: abortController.signal,
+          });
+          // @ts-ignore
+          if (content?.code) {
+            // @ts-ignore
+            setOtp(content.code);
+          }
+        } catch (err) {
+          // User cancelled or API not supported - silently ignore
+          console.log('WebOTP not available or cancelled');
+        }
+      }
+    };
+    
+    getOTP();
+    
+    return () => {
+      abortController.abort();
+    };
+  }, [step]);
+
   const formatPhoneDisplay = (value: string) => {
     const digits = value.replace(/\D/g, '');
     if (digits.length <= 3) return digits;
@@ -252,6 +285,7 @@ export default function AuthPage() {
                 maxLength={6}
                 value={otp}
                 onChange={setOtp}
+                autoComplete="one-time-code"
               >
                 <InputOTPGroup className="gap-2">
                   <InputOTPSlot index={0} className="h-12 w-12 text-xl" />
