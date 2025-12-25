@@ -82,7 +82,10 @@ serve(async (req) => {
     }
 
     console.log('SMS Phone (local format):', smsPhone);
-    console.log('Token first 10 chars:', inforuToken.substring(0, 10));
+    
+    // Check if token already has "Basic " prefix
+    const authHeader = inforuToken.startsWith('Basic ') ? inforuToken : `Basic ${inforuToken}`;
+    console.log('Auth header first 20 chars:', authHeader.substring(0, 20));
 
     const requestBody = {
       Data: {
@@ -100,7 +103,7 @@ serve(async (req) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        'Authorization': `Basic ${inforuToken}`,
+        'Authorization': authHeader,
       },
       body: JSON.stringify(requestBody),
     });
