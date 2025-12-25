@@ -33,7 +33,7 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({
       <header className="bg-white/80 backdrop-blur-sm border-b border-border/50 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
-            <QuickTaxLogo size="medium" showTagline={false} />
+            <QuickTaxLogo size="medium" />
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">
                 שלב {currentStep} מתוך {totalSteps}
