@@ -1,7 +1,8 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { QuickTaxLogo } from '@/components/QuickTaxLogo';
+
 interface PortalLayoutProps {
   children: React.ReactNode;
   currentStep: number;
@@ -33,7 +34,9 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({
       <header className="bg-white/80 backdrop-blur-sm border-b border-border/50 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
-            <QuickTaxLogo size="medium" />
+            <div className="text-2xl font-bold text-primary">
+              QuickTax
+            </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">
                 שלב {currentStep} מתוך {totalSteps}
