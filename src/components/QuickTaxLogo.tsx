@@ -40,6 +40,7 @@ export default function QuickTaxLogo({ className = '', size = 'md' }: QuickTaxLo
   return (
     <div 
       className={className}
+      dir="ltr"
       style={{ 
         display: 'flex', 
         alignItems: 'center', 
