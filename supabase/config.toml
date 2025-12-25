@@ -1,1 +1,13 @@
 project_id = "ugufajshycaaffkrgkdj"
+
+[functions.salesforce-data]
+verify_jwt = false
+
+[functions.salesforce-integration]
+verify_jwt = false
+
+[functions.send-otp]
+verify_jwt = false
+
+[functions.verify-otp]
+verify_jwt = false

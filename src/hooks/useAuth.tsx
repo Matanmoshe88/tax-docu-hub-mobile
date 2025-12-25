@@ -8,6 +8,9 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<{ error: any }>;
+  sendOtp: (phone: string) => Promise<{ error: any }>;
+  verifyOtp: (phone: string, code: string) => Promise<{ error: any }>;
   loading: boolean;
 }
 
@@ -63,12 +66,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`
+      }
+    });
+    return { error };
+  };
+
+  const sendOtp = async (phone: string) => {
+    try {
+      const response = await fetch(
+        'https://ugufajshycaaffkrgkdj.supabase.co/functions/v1/send-otp',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ phone }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { error: { message: data.error || 'Failed to send OTP' } };
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      return { error: { message: error.message || 'Network error' } };
+    }
+  };
+
+  const verifyOtp = async (phone: string, code: string) => {
+    try {
+      const response = await fetch(
+        'https://ugufajshycaaffkrgkdj.supabase.co/functions/v1/verify-otp',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ phone, code }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { error: { message: data.error || 'Failed to verify OTP' } };
+      }
+
+      // Set the session from the response
+      if (data.session) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      return { error: { message: error.message || 'Network error' } };
+    }
+  };
+
   const value = {
     user,
     session,
     signIn,
     signUp,
     signOut,
+    signInWithGoogle,
+    sendOtp,
+    verifyOtp,
     loading,
   };
 
