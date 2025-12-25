@@ -4,73 +4,81 @@ interface QuickTaxLogoProps {
 }
 
 export default function QuickTaxLogo({ className = '', size = 'md' }: QuickTaxLogoProps) {
-  const sizeClasses = {
-    sm: 'text-2xl',
-    md: 'text-4xl',
-    lg: 'text-5xl',
+  const sizeConfig = {
+    sm: {
+      text: 'text-xl',
+      tagline: 'text-xs',
+      lineWidth: 6,
+      lineHeights: [15, 24, 33],
+      gap: 2,
+      radius: 3,
+    },
+    md: {
+      text: 'text-[28px]',
+      tagline: 'text-sm',
+      lineWidth: 8,
+      lineHeights: [20, 32, 44],
+      gap: 3,
+      radius: 4,
+    },
+    lg: {
+      text: 'text-4xl',
+      tagline: 'text-base',
+      lineWidth: 10,
+      lineHeights: [25, 40, 55],
+      gap: 4,
+      radius: 5,
+    },
   };
 
-  const taglineSizes = {
-    sm: 'text-xs',
-    md: 'text-sm',
-    lg: 'text-base',
-  };
-
-  const lineSizes = {
-    sm: { width: 40, height: 3, gap: 2 },
-    md: { width: 60, height: 4, gap: 3 },
-    lg: { width: 80, height: 5, gap: 4 },
-  };
-
-  const lineConfig = lineSizes[size];
+  const config = sizeConfig[size];
+  const colors = ['#ffcc00', '#00ca72', '#5493f7'];
 
   return (
-    <div className={`flex flex-col items-center ${className}`}>
-      {/* Main Logo Text */}
+    <div className={`flex flex-col items-end ${className}`}>
+      {/* Logo Row - Icon + Text */}
       <div className="flex items-center gap-2">
-        <span 
-          className={`font-bold ${sizeClasses[size]} tracking-tight`}
-          style={{ color: '#060644' }}
-        >
-          Quicktax
-        </span>
-        
-        {/* Colored Lines */}
+        {/* Icon - Three diagonal lines */}
         <div 
-          className="flex flex-col justify-center"
-          style={{ gap: `${lineConfig.gap}px` }}
+          className="flex items-end"
+          style={{ 
+            transform: 'rotate(-20deg)',
+            gap: `${config.gap}px`,
+          }}
         >
-          <div 
-            style={{ 
-              width: `${lineConfig.width}px`, 
-              height: `${lineConfig.height}px`, 
-              backgroundColor: '#5493f7',
-              borderRadius: '2px'
-            }} 
-          />
-          <div 
-            style={{ 
-              width: `${lineConfig.width}px`, 
-              height: `${lineConfig.height}px`, 
-              backgroundColor: '#00ca72',
-              borderRadius: '2px'
-            }} 
-          />
-          <div 
-            style={{ 
-              width: `${lineConfig.width}px`, 
-              height: `${lineConfig.height}px`, 
-              backgroundColor: '#ffcc00',
-              borderRadius: '2px'
-            }} 
-          />
+          {config.lineHeights.map((height, index) => (
+            <div
+              key={index}
+              style={{
+                width: `${config.lineWidth}px`,
+                height: `${height}px`,
+                backgroundColor: colors[index],
+                borderRadius: `${config.radius}px`,
+              }}
+            />
+          ))}
         </div>
+
+        {/* QuickTax Text */}
+        <span 
+          className={`font-bold ${config.text} tracking-tight`}
+          style={{ 
+            color: '#060644',
+            fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          QuickTax
+        </span>
       </div>
 
-      {/* Hebrew Tagline */}
+      {/* Hebrew Tagline - aligned right */}
       <span 
-        className={`${taglineSizes[size]} mt-1 font-medium`}
-        style={{ color: '#666e81' }}
+        className={`${config.tagline} mt-1`}
+        style={{ 
+          color: '#666e81',
+          fontFamily: 'Inter, sans-serif',
+        }}
+        dir="rtl"
       >
         החזרי מס בקלות!
       </span>
